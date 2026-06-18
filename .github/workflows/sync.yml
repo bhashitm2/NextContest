@@ -1,0 +1,25 @@
+# Free production scheduler for the contest sync pipeline.
+# Hits the secret-protected /api/cron/sync endpoint on a schedule.
+# Requires two repo secrets: APP_URL (deployed base URL) and CRON_SECRET.
+name: Sync contests
+
+on:
+  schedule:
+    - cron: "*/30 * * * *" # every 30 minutes
+  workflow_dispatch: {} # allow manual runs
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger contest sync
+        run: |
+          code=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/sync")
+          echo "HTTP $code"
+          cat /tmp/body.json
+          # 200 = all sources OK, 207 = some sources failed (still acceptable)
+          if [ "$code" != "200" ] && [ "$code" != "207" ]; then
+            exit 1
+          fi

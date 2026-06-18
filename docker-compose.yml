@@ -1,0 +1,24 @@
+# Local development database.
+# Start with:  docker compose up -d
+# This is for LOCAL DEV ONLY — production uses Neon/Supabase (set DATABASE_URL accordingly).
+services:
+  db:
+    image: postgres:17
+    container_name: cp-contest-portal-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cp_contest_portal
+    ports:
+      - "5432:5432"
+    volumes:
+      - cp_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cp_contest_portal"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  cp_pgdata:

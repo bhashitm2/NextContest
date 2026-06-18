@@ -1,0 +1,22 @@
+# Dispatches due contest reminder emails on a schedule.
+# Hits the secret-protected /api/cron/reminders endpoint.
+# Requires repo secrets: APP_URL (deployed base URL) and CRON_SECRET.
+name: Send reminders
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # every 15 minutes
+  workflow_dispatch: {}
+
+jobs:
+  reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch due reminders
+        run: |
+          code=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/reminders")
+          echo "HTTP $code"
+          cat /tmp/body.json
+          [ "$code" = "200" ] || exit 1

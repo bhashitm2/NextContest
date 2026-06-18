@@ -1,0 +1,195 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Fonts (wired to next/font variables in layout.tsx) */
+  --font-sans: var(--font-ibm-plex), system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  /* CP Contest Portal design palette → Tailwind utilities (bg-cp-bg, text-cp-dim …) */
+  --color-cp-bg: var(--cp-bg);
+  --color-cp-bg-soft: var(--cp-bg-soft);
+  --color-cp-surface: var(--cp-surface);
+  --color-cp-surface2: var(--cp-surface-2);
+  --color-cp-line: var(--cp-line);
+  --color-cp-line-strong: var(--cp-line-strong);
+  --color-cp-text: var(--cp-text);
+  --color-cp-dim: var(--cp-text-dim);
+  --color-cp-faint: var(--cp-text-faint);
+  --color-cp-accent: var(--cp-accent);
+  --color-cp-accent-ink: var(--cp-accent-ink);
+  --color-cp-live: var(--cp-live);
+  --color-cp-cf: var(--cp-cf);
+  --color-cp-lc: var(--cp-lc);
+  --color-cp-ac: var(--cp-ac);
+  --color-cp-cc: var(--cp-cc);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+}
+
+/* ---- Light theme (default :root) + shadcn neutral mapping ---- */
+:root {
+  --cp-bg: #f4f5f7;
+  --cp-bg-soft: #ffffff;
+  --cp-surface: rgba(15, 18, 26, 0.025);
+  --cp-surface-2: rgba(15, 18, 26, 0.05);
+  --cp-line: rgba(15, 18, 26, 0.1);
+  --cp-line-strong: rgba(15, 18, 26, 0.2);
+  --cp-text: #15181f;
+  --cp-text-dim: #535b68;
+  --cp-text-faint: #888f9c;
+  --cp-shadow: 0 24px 60px -28px rgba(20, 30, 50, 0.25);
+  --cp-wm: 0.16;
+  --cp-live: #e5484d;
+
+  /* Accent (overridden at runtime by the accent picker). Violet by default. */
+  --cp-accent: #a78bfa;
+  --cp-accent-ink: #0b0a14;
+
+  /* Platform brand colors */
+  --cp-cf: #e5484d;
+  --cp-lc: #d98412;
+  --cp-ac: #5b6473;
+  --cp-cc: #9c6722;
+
+  --background: var(--cp-bg);
+  --foreground: var(--cp-text);
+  --radius: 0.7rem;
+}
+
+.dark {
+  --cp-bg: #08090c;
+  --cp-bg-soft: #0d0f14;
+  --cp-surface: rgba(255, 255, 255, 0.035);
+  --cp-surface-2: rgba(255, 255, 255, 0.06);
+  --cp-line: rgba(255, 255, 255, 0.09);
+  --cp-line-strong: rgba(255, 255, 255, 0.16);
+  --cp-text: #f3f5f8;
+  --cp-text-dim: #9aa2af;
+  --cp-text-faint: #646b78;
+  --cp-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.7);
+  --cp-wm: 0.07;
+  --cp-live: #ff5d5d;
+
+  --cp-accent: #a78bfa;
+  --cp-accent-ink: #07120c;
+
+  --cp-cf: #ff6b6b;
+  --cp-lc: #ffa116;
+  --cp-ac: #9aa7b8;
+  --cp-cc: #c2823f;
+
+  --background: var(--cp-bg);
+  --foreground: var(--cp-text);
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(40px, -30px) scale(1.1);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+@keyframes livePulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--cp-line);
+  }
+  body {
+    background: var(--cp-bg);
+    color: var(--cp-text);
+    font-family: var(--font-ibm-plex), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition:
+      background 0.4s ease,
+      color 0.4s ease;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--cp-accent) 40%, transparent);
+  }
+}
+
+/* Small reusable helpers */
+.cp-glow {
+  box-shadow: 0 0 30px color-mix(in srgb, var(--cp-accent) 45%, transparent);
+}
+.animate-rise {
+  animation: riseIn 0.5s ease both;
+}

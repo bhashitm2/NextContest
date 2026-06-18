@@ -1,0 +1,173 @@
+// CP Contest Portal — Prisma schema (v0.1 "The Wedge")
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Platform {
+  CODEFORCES
+  LEETCODE
+  ATCODER
+  CODECHEF
+  HACKERRANK // reserved for a later release
+}
+
+enum ContestStatus {
+  UPCOMING
+  ONGOING
+  FINISHED
+}
+
+// ---------------------------------------------------------------------------
+// Auth.js (NextAuth v5) adapter models
+// Standard @auth/prisma-adapter schema. Sessions kept for flexibility even
+// though v0.1 uses the JWT session strategy.
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+
+  accounts Account[]
+  sessions Session[]
+  bookmarks Bookmark[]
+  handles  PlatformHandle[]
+  subscriptions PlatformSubscription[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// Domain models
+// ---------------------------------------------------------------------------
+
+model Contest {
+  id              String        @id @default(cuid())
+  platform        Platform
+  externalId      String // the platform's own contest identifier
+  title           String
+  url             String
+  startTime       DateTime
+  endTime         DateTime
+  durationSeconds Int
+  difficulty      String?
+  status          ContestStatus @default(UPCOMING)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  bookmarks Bookmark[]
+
+  @@unique([platform, externalId]) // dedupe key for upserts
+  @@index([startTime])
+  @@index([status, startTime])
+}
+
+model Bookmark {
+  id            String    @id @default(cuid())
+  userId        String
+  contestId     String
+  notify24h     Boolean   @default(true)
+  notify1h      Boolean   @default(true)
+  notified24hAt DateTime? // set once the 24h reminder is sent (idempotency)
+  notified1hAt  DateTime? // set once the 1h reminder is sent (idempotency)
+  auto          Boolean   @default(false) // created by a PlatformSubscription, not manually
+  createdAt     DateTime  @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contestId])
+  @@index([contestId])
+}
+
+// "Follow a platform": auto-reminders for every upcoming contest on it, no
+// manual bookmarking. Drives auto-created Bookmarks (see server/sync/auto-bookmarks).
+model PlatformSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  platform  Platform
+  notify24h Boolean  @default(true)
+  notify1h  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+}
+
+// Pre-added for v0.5 (handle connect + Codolio-style verification) so the
+// identity release needs no migration churn.
+model PlatformHandle {
+  id               String    @id @default(cuid())
+  userId           String
+  platform         Platform
+  handle           String
+  rating           Int?
+  verified         Boolean   @default(false)
+  verificationCode String?
+  lastSynced       DateTime?
+  createdAt        DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+}
+
+// Tracks per-source pipeline health so the UI can show a "stale data" banner
+// and the founder can be alerted on scraper failure.
+model SyncState {
+  source           Platform  @id
+  lastRunAt        DateTime?
+  lastSuccessAt    DateTime?
+  lastError        String?
+  contestsUpserted Int       @default(0)
+  updatedAt        DateTime  @updatedAt
+}
