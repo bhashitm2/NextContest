@@ -1,13 +1,32 @@
-import { Resend } from "resend";
+import nodemailer, { type Transporter } from "nodemailer";
 
 import { formatStart } from "@/lib/format";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-const FROM = process.env.EMAIL_FROM ?? "CP Contest Portal <onboarding@resend.dev>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export type ReminderKind = "24h" | "1h";
+
+let transporter: Transporter | null = null;
+
+function getTransporter(): Transporter {
+  if (transporter) return transporter;
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD;
+  if (!user || !pass) {
+    throw new Error("Email not configured: set GMAIL_USER and GMAIL_APP_PASSWORD");
+  }
+  transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user, pass },
+  });
+  return transporter;
+}
+
+/** Gmail rewrites the From to the authenticated account, so EMAIL_FROM should
+ * use the same address (with an optional display name). */
+function fromAddress(): string {
+  return process.env.EMAIL_FROM || `CP Contest Portal <${process.env.GMAIL_USER}>`;
+}
 
 export async function sendContestReminder(opts: {
   to: string;
@@ -34,14 +53,10 @@ export async function sendContestReminder(opts: {
     </p>
   </div>`;
 
-  const { error } = await resend.emails.send({
-    from: FROM,
+  await getTransporter().sendMail({
+    from: fromAddress(),
     to: opts.to,
     subject,
     html,
   });
-
-  if (error) {
-    throw new Error(`Resend: ${error.message}`);
-  }
 }

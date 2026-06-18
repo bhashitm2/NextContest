@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 
-import { sendContestReminder, type ReminderKind } from "@/server/email/resend";
+import { sendContestReminder, type ReminderKind } from "@/server/email/mailer";
 
 const HOUR = 60 * 60 * 1000;
 
