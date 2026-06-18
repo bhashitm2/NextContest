@@ -11,7 +11,8 @@ let transporter: Transporter | null = null;
 function getTransporter(): Transporter {
   if (transporter) return transporter;
   const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASSWORD;
+  // Google shows app passwords as "abcd efgh ijkl mnop"; spaces aren't part of it.
+  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "");
   if (!user || !pass) {
     throw new Error("Email not configured: set GMAIL_USER and GMAIL_APP_PASSWORD");
   }
