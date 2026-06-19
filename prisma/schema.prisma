@@ -47,6 +47,9 @@ model User {
   // Public slug for the shareable profile page (GET /u/<username>). Set by the
   // user during profile setup; null until chosen.
   username      String?   @unique
+  // IANA timezone (e.g. "Asia/Kolkata") captured from the browser, so reminder
+  // emails (rendered server-side, in UTC) can show times in the user's zone.
+  timezone      String?
 
   accounts Account[]
   sessions Session[]

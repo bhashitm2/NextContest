@@ -1,10 +1,58 @@
 import nodemailer, { type Transporter } from "nodemailer";
 
-import { formatStart } from "@/lib/format";
+import type { Platform } from "@/generated/prisma/client";
+import { formatDuration, formatStartInZone } from "@/lib/format";
+import { PLATFORM_META } from "@/lib/platforms";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export type ReminderKind = "24h" | "1h";
+
+export type ReminderEmailOpts = {
+  contestTitle: string;
+  contestUrl: string;
+  startTime: Date;
+  durationSeconds: number;
+  platform: Platform;
+  /** IANA timezone of the recipient; null → format in UTC. */
+  timezone: string | null;
+  kind: ReminderKind;
+};
+
+const ACCENT = "#4f46e5";
+
+/** Build the reminder email's subject + HTML (pure — no sending, so testable). */
+export function buildReminderEmail(opts: ReminderEmailOpts): { subject: string; html: string } {
+  const when = opts.kind === "24h" ? "in 24 hours" : "in 1 hour";
+  const platformLabel = PLATFORM_META[opts.platform].label;
+  const startsAt = formatStartInZone(opts.startTime, opts.timezone ?? "UTC");
+  const duration = formatDuration(opts.durationSeconds);
+
+  const subject = `⏰ ${platformLabel}: ${opts.contestTitle} starts ${when}`;
+
+  const html = `
+  <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;color:#111">
+    <p style="font-size:13px;color:#888;margin:0 0 4px">NextContest reminder</p>
+    <h1 style="font-size:20px;line-height:1.3;margin:0 0 14px">
+      Your bookmarked <strong>${platformLabel}</strong> contest starts <strong>${when}</strong>
+    </h1>
+    <div style="border:1px solid #e5e7eb;border-radius:12px;padding:18px;margin:12px 0">
+      <p style="display:inline-block;font-size:12px;font-weight:600;color:${ACCENT};background:#eef2ff;border-radius:999px;padding:3px 10px;margin:0 0 10px">${platformLabel}</p>
+      <p style="font-weight:700;font-size:17px;margin:0 0 12px">${opts.contestTitle}</p>
+      <table style="font-size:14px;color:#444;margin:0 0 14px;border-collapse:collapse">
+        <tr><td style="padding:2px 0;color:#888">Starts</td><td style="padding:2px 0 2px 14px;font-weight:600;color:#111">${startsAt}</td></tr>
+        <tr><td style="padding:2px 0;color:#888">Duration</td><td style="padding:2px 0 2px 14px;color:#111">${duration}</td></tr>
+      </table>
+      <a href="${opts.contestUrl}" style="display:inline-block;background:${ACCENT};color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600">Open contest →</a>
+    </div>
+    <p style="font-size:12px;color:#999;margin-top:16px;line-height:1.5">
+      Time shown in your saved timezone. You're getting this because you bookmarked this contest on
+      <a href="${APP_URL}" style="color:${ACCENT}">NextContest</a>.
+    </p>
+  </div>`;
+
+  return { subject, html };
+}
 
 let transporter: Transporter | null = null;
 
@@ -29,31 +77,8 @@ function fromAddress(): string {
   return process.env.EMAIL_FROM || `NextContest <${process.env.GMAIL_USER}>`;
 }
 
-export async function sendContestReminder(opts: {
-  to: string;
-  contestTitle: string;
-  contestUrl: string;
-  startTime: Date;
-  kind: ReminderKind;
-}) {
-  const when = opts.kind === "24h" ? "in 24 hours" : "in 1 hour";
-  const subject = `⏰ ${opts.contestTitle} starts ${when}`;
-
-  const html = `
-  <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;color:#111">
-    <p style="font-size:14px;color:#666;margin:0 0 4px">NextContest</p>
-    <h1 style="font-size:20px;margin:0 0 12px">A contest you bookmarked starts ${when}</h1>
-    <div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin:12px 0">
-      <p style="font-weight:600;font-size:16px;margin:0 0 6px">${opts.contestTitle}</p>
-      <p style="color:#555;margin:0 0 12px">Starts: ${formatStart(opts.startTime)}</p>
-      <a href="${opts.contestUrl}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:9px 14px;border-radius:8px;font-size:14px">Go to contest →</a>
-    </div>
-    <p style="font-size:12px;color:#888;margin-top:16px">
-      You're getting this because you bookmarked this contest on
-      <a href="${APP_URL}" style="color:#4f46e5">NextContest</a>.
-    </p>
-  </div>`;
-
+export async function sendContestReminder(opts: ReminderEmailOpts & { to: string }) {
+  const { subject, html } = buildReminderEmail(opts);
   await getTransporter().sendMail({
     from: fromAddress(),
     to: opts.to,

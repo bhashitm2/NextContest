@@ -5,6 +5,7 @@ import { calendarRouter } from "./calendar";
 import { contestRouter } from "./contest";
 import { handleRouter } from "./handle";
 import { subscriptionRouter } from "./subscription";
+import { userRouter } from "./user";
 
 export const appRouter = createTRPCRouter({
   contest: contestRouter,
@@ -12,6 +13,7 @@ export const appRouter = createTRPCRouter({
   subscription: subscriptionRouter,
   calendar: calendarRouter,
   handle: handleRouter,
+  user: userRouter,
 });
 
 export type AppRouter = typeof appRouter;

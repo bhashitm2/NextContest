@@ -3,10 +3,12 @@ import { IBM_Plex_Sans, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 
 import "./globals.css";
 
+import { auth } from "@/auth";
 import { AmbientBackground } from "@/components/ambient-background";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { TimezoneSync } from "@/components/timezone-sync";
 import { TRPCReactProvider } from "@/trpc/react";
 
 const sans = IBM_Plex_Sans({
@@ -31,7 +33,9 @@ export const metadata: Metadata = {
     "One portal for every upcoming competitive programming contest — Codeforces, LeetCode, AtCoder, CodeChef — with reminders so you never miss one.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const session = await auth();
+
   return (
     <html
       lang="en"
@@ -41,6 +45,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-full">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
           <TRPCReactProvider>
+            {session?.user ? <TimezoneSync /> : null}
             <AmbientBackground />
             <div className="relative z-[1] flex min-h-screen flex-col">
               <SiteHeader />

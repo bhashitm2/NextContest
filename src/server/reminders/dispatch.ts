@@ -1,3 +1,4 @@
+import type { Platform } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 
 import { sendContestReminder, type ReminderKind } from "@/server/email/mailer";
@@ -67,7 +68,16 @@ export async function runReminderDispatch(): Promise<DispatchResult> {
 }
 
 async function sendReminder(
-  b: { user: { email: string | null }; contest: { title: string; url: string; startTime: Date } },
+  b: {
+    user: { email: string | null; timezone: string | null };
+    contest: {
+      title: string;
+      url: string;
+      startTime: Date;
+      durationSeconds: number;
+      platform: Platform;
+    };
+  },
   kind: ReminderKind,
 ) {
   await sendContestReminder({
@@ -75,6 +85,9 @@ async function sendReminder(
     contestTitle: b.contest.title,
     contestUrl: b.contest.url,
     startTime: b.contest.startTime,
+    durationSeconds: b.contest.durationSeconds,
+    platform: b.contest.platform,
+    timezone: b.user.timezone,
     kind,
   });
 }

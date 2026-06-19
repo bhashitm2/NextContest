@@ -37,3 +37,52 @@ const DATE_FMT = new Intl.DateTimeFormat(undefined, {
 export function formatStart(date: Date): string {
   return DATE_FMT.format(date);
 }
+
+// Friendly abbreviations for common zones; unmapped zones fall back to the
+// Intl short name (e.g. "GMT+5:30"). Used for server-rendered emails, which
+// can't rely on the browser's local timezone.
+const TZ_ABBREV: Record<string, string> = {
+  "Asia/Kolkata": "IST",
+  "Asia/Calcutta": "IST",
+  "America/New_York": "ET",
+  "America/Chicago": "CT",
+  "America/Denver": "MT",
+  "America/Los_Angeles": "PT",
+  "Europe/London": "UK time",
+  "Europe/Paris": "CET",
+  "Europe/Berlin": "CET",
+  "Asia/Tokyo": "JST",
+  "Asia/Shanghai": "CST",
+  "Asia/Singapore": "SGT",
+  "Australia/Sydney": "AET",
+  UTC: "UTC",
+};
+
+function shortZoneName(date: Date, timeZone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "short" }).formatToParts(date);
+    return parts.find((p) => p.type === "timeZoneName")?.value ?? timeZone;
+  } catch {
+    return timeZone;
+  }
+}
+
+/** "Sat, Jun 20, 8:00 PM (IST)" — absolute time rendered in a specific IANA
+ * timezone, with a friendly label. Falls back to UTC for an invalid zone. */
+export function formatStartInZone(date: Date, timeZone: string): string {
+  let base: string;
+  try {
+    base = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
+  } catch {
+    return formatStartInZone(date, "UTC");
+  }
+  const abbrev = TZ_ABBREV[timeZone] ?? shortZoneName(date, timeZone);
+  return `${base} (${abbrev})`;
+}
