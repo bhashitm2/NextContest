@@ -29,9 +29,19 @@ export const bookmarkRouter = createTRPCRouter({
 
       if (existing) {
         await ctx.db.bookmark.delete({ where: { id: existing.id } });
+        // Leave a tombstone so subscribed calendars remove the cancelled event.
+        await ctx.db.calendarTombstone.upsert({
+          where: { userId_contestId: { userId: ctx.userId, contestId: input.contestId } },
+          create: { userId: ctx.userId, contestId: input.contestId },
+          update: {},
+        });
         return { bookmarked: false };
       }
 
+      // Re-bookmarking clears any cancellation tombstone for this contest.
+      await ctx.db.calendarTombstone.deleteMany({
+        where: { userId: ctx.userId, contestId: input.contestId },
+      });
       await ctx.db.bookmark.create({
         data: {
           userId: ctx.userId,

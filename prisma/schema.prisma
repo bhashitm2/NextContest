@@ -50,6 +50,7 @@ model User {
   bookmarks Bookmark[]
   handles  PlatformHandle[]
   subscriptions PlatformSubscription[]
+  tombstones CalendarTombstone[]
 }
 
 model Account {
@@ -107,6 +108,7 @@ model Contest {
   updatedAt       DateTime      @updatedAt
 
   bookmarks Bookmark[]
+  tombstones CalendarTombstone[]
 
   @@unique([platform, externalId]) // dedupe key for upserts
   @@index([startTime])
@@ -123,6 +125,23 @@ model Bookmark {
   notified1hAt  DateTime? // set once the 1h reminder is sent (idempotency)
   auto          Boolean   @default(false) // created by a PlatformSubscription, not manually
   createdAt     DateTime  @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contestId])
+  @@index([contestId])
+}
+
+// Records a contest a user UN-followed / un-bookmarked, so the calendar feed
+// can keep emitting it as STATUS:CANCELLED until it ends. Subscribed calendar
+// apps (especially Google) only remove an event when they see a cancellation,
+// not when it silently disappears from the feed. Pruned once the contest ends.
+model CalendarTombstone {
+  id        String   @id @default(cuid())
+  userId    String
+  contestId String
+  createdAt DateTime @default(now())
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)

@@ -39,11 +39,27 @@ function icsUid(c: CalendarContest): string {
   return `${c.platform ?? "cp"}-${c.externalId ?? toICSDate(c.startTime)}@nextcontest`;
 }
 
-/** One VEVENT (with VALARMs) for a contest. Lines only — no VCALENDAR wrapper. */
-function icsEvent(c: CalendarContest, alarms: CalendarAlarms = {}): string[] {
+/** One VEVENT (with VALARMs) for a contest. Lines only — no VCALENDAR wrapper.
+ * `cancelled` emits a STATUS:CANCELLED tombstone (same UID, higher SEQUENCE) so
+ * subscribed calendars remove a contest the user un-followed. */
+function icsEvent(c: CalendarContest, opts: CalendarAlarms & { cancelled?: boolean } = {}): string[] {
+  if (opts.cancelled) {
+    return [
+      "BEGIN:VEVENT",
+      `UID:${icsUid(c)}`,
+      `DTSTAMP:${toICSDate(new Date())}`,
+      `DTSTART:${toICSDate(c.startTime)}`,
+      `DTEND:${toICSDate(c.endTime)}`,
+      `SUMMARY:${escapeICS(c.title)}`,
+      "STATUS:CANCELLED",
+      "SEQUENCE:2",
+      "END:VEVENT",
+    ];
+  }
+
   // Default to a 1-hour alarm when no preference is given (matches buildIcs).
-  const want24h = alarms.notify24h ?? false;
-  const want1h = alarms.notify1h ?? true;
+  const want24h = opts.notify24h ?? false;
+  const want1h = opts.notify1h ?? true;
 
   const valarm = (trigger: string, label: string) => [
     "BEGIN:VALARM",
@@ -62,6 +78,8 @@ function icsEvent(c: CalendarContest, alarms: CalendarAlarms = {}): string[] {
     `SUMMARY:${escapeICS(c.title)}`,
     `DESCRIPTION:${escapeICS(`Contest link: ${c.url}`)}`,
     `URL:${c.url}`,
+    "STATUS:CONFIRMED",
+    "SEQUENCE:0",
     ...(want24h ? valarm("-P1D", `${c.title} starts in 24 hours`) : []),
     ...(want1h ? valarm("-PT1H", `${c.title} starts in 1 hour`) : []),
     "END:VEVENT",
@@ -84,7 +102,7 @@ export function buildIcs(c: CalendarContest): string {
  * periodically, so newly-followed contests appear automatically — each with its
  * own alarm before the contest starts. */
 export function buildCalendarFeed(
-  events: Array<CalendarContest & CalendarAlarms>,
+  events: Array<CalendarContest & CalendarAlarms & { cancelled?: boolean }>,
   opts: { name?: string } = {},
 ): string {
   const name = opts.name ?? "NextContest";
