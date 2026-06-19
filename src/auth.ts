@@ -12,7 +12,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // Required for non-Vercel hosts (and fine locally).
   trustHost: true,
   // Provider credentials are read from AUTH_GITHUB_ID/SECRET, AUTH_GOOGLE_ID/SECRET.
-  providers: [GitHub, Google],
+  // allowDangerousEmailAccountLinking: if a user already exists for an email,
+  // signing in with a different provider that reports the SAME email links to
+  // that same account instead of erroring with OAuthAccountNotLinked. Safe here
+  // because both GitHub and Google verify email ownership before sharing it.
+  providers: [
+    GitHub({ allowDangerousEmailAccountLinking: true }),
+    Google({ allowDangerousEmailAccountLinking: true }),
+  ],
   callbacks: {
     jwt({ token, user }) {
       if (user?.id) token.id = user.id;
