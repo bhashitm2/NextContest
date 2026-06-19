@@ -28,6 +28,11 @@ enum ContestStatus {
   FINISHED
 }
 
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+}
+
 // ---------------------------------------------------------------------------
 // Auth.js (NextAuth v5) adapter models
 // Standard @auth/prisma-adapter schema. Sessions kept for flexibility even
@@ -57,6 +62,8 @@ model User {
   handles  PlatformHandle[]
   subscriptions PlatformSubscription[]
   tombstones CalendarTombstone[]
+  sentRequests     Friendship[] @relation("SentRequests")
+  receivedRequests Friendship[] @relation("ReceivedRequests")
 }
 
 model Account {
@@ -192,6 +199,25 @@ model PlatformHandle {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, platform])
+}
+
+// v0.6 social layer. One row per ordered (requester→addressee) pair; a PENDING
+// row is a friend request, ACCEPTED is a friendship. "Friends of X" = ACCEPTED
+// rows where X is requester OR addressee.
+model Friendship {
+  id          String       @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  respondedAt DateTime?
+
+  requester User @relation("SentRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("ReceivedRequests", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
 }
 
 // Tracks per-source pipeline health so the UI can show a "stale data" banner

@@ -4,11 +4,15 @@ import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
 import { AccentPicker } from "@/components/theme/accent-picker";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { prisma } from "@/lib/db";
 
 export async function SiteHeader() {
   const session = await auth();
   const user = session?.user;
   const initial = (user?.name ?? user?.email ?? "?").charAt(0).toUpperCase();
+  const pendingRequests = user?.id
+    ? await prisma.friendship.count({ where: { addresseeId: user.id, status: "PENDING" } })
+    : 0;
 
   return (
     <header
@@ -54,6 +58,17 @@ export async function SiteHeader() {
                 className="hidden rounded-lg px-3 py-2 text-sm text-cp-dim transition-colors hover:text-cp-text sm:block"
               >
                 Profile
+              </Link>
+              <Link
+                href="/friends"
+                className="relative hidden rounded-lg px-3 py-2 text-sm text-cp-dim transition-colors hover:text-cp-text sm:block"
+              >
+                Friends
+                {pendingRequests > 0 ? (
+                  <span className="absolute right-0.5 top-1 grid min-w-[16px] place-items-center rounded-full bg-cp-accent px-1 text-[10px] font-bold leading-4 text-cp-accent-ink">
+                    {pendingRequests}
+                  </span>
+                ) : null}
               </Link>
               <Link
                 href="/settings"
