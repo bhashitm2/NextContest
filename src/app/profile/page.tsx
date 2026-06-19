@@ -1,0 +1,112 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+import { auth } from "@/auth";
+import { ProfileBody } from "@/components/profile/profile-body";
+import { SignInPrompt } from "@/components/profile/sign-in-prompt";
+import { prisma } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Your Profile — NextContest",
+  description: "Your verified competitive-programming profiles and solved-problem stats across platforms.",
+};
+
+const HANDLE_SELECT = {
+  platform: true,
+  handle: true,
+  rating: true,
+  maxRating: true,
+  rank: true,
+  problemsSolved: true,
+  stats: true,
+  lastSynced: true,
+} as const;
+
+export default async function ProfilePage() {
+  const session = await auth();
+
+  if (!session?.user) {
+    return (
+      <SignInPrompt
+        redirectTo="/profile"
+        title="Your CP profile"
+        subtitle="Sign in to see your verified coding profiles and cross-platform stats."
+      />
+    );
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      name: true,
+      image: true,
+      username: true,
+      handles: {
+        where: { verified: true },
+        select: HANDLE_SELECT,
+        orderBy: { problemsSolved: "desc" },
+      },
+    },
+  });
+
+  const display = user?.name ?? session.user.name ?? session.user.email ?? "You";
+  const initial = display.charAt(0).toUpperCase();
+  const handles = user?.handles ?? [];
+
+  return (
+    <main className="mx-auto w-full max-w-[840px] px-4 py-10 sm:px-[22px]">
+      <header className="mb-6 flex flex-wrap items-center gap-4">
+        {user?.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.image} alt="" className="size-14 rounded-full border border-cp-line object-cover" />
+        ) : (
+          <span
+            className="grid size-14 place-items-center rounded-full text-xl font-bold text-cp-accent-ink"
+            style={{ background: "var(--cp-accent)" }}
+          >
+            {initial}
+          </span>
+        )}
+        <div className="min-w-0">
+          <h1 className="font-display text-[clamp(1.6rem,3.4vw,2.2rem)] font-bold tracking-[-0.02em]">
+            {display}
+          </h1>
+          {user?.username ? (
+            <Link href={`/u/${user.username}`} className="font-mono text-[13px] text-cp-dim hover:text-cp-accent">
+              @{user.username} · view public page ↗
+            </Link>
+          ) : (
+            <p className="text-[13px] text-cp-dim">
+              No public username yet —{" "}
+              <Link href="/settings" className="text-cp-accent hover:underline">
+                set one in Settings
+              </Link>
+            </p>
+          )}
+        </div>
+        <Link
+          href="/settings"
+          className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-cp-line bg-cp-surface px-3.5 text-[13px] font-semibold text-cp-dim transition-colors hover:text-cp-text"
+        >
+          Manage in Settings
+        </Link>
+      </header>
+
+      {handles.length === 0 ? (
+        <div className="rounded-[14px] border border-dashed border-cp-line bg-cp-surface p-8 text-center">
+          <p className="text-cp-dim">No verified coding profiles yet.</p>
+          <Link
+            href="/settings"
+            className="mt-3 inline-flex h-10 items-center rounded-[10px] bg-cp-accent px-4 text-sm font-semibold text-cp-accent-ink"
+          >
+            Connect a handle in Settings
+          </Link>
+        </div>
+      ) : (
+        <ProfileBody handles={handles} />
+      )}
+    </main>
+  );
+}

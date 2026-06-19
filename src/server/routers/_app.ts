@@ -3,6 +3,7 @@ import { createCallerFactory, createTRPCRouter } from "@/server/trpc";
 import { bookmarkRouter } from "./bookmark";
 import { calendarRouter } from "./calendar";
 import { contestRouter } from "./contest";
+import { handleRouter } from "./handle";
 import { subscriptionRouter } from "./subscription";
 
 export const appRouter = createTRPCRouter({
@@ -10,6 +11,7 @@ export const appRouter = createTRPCRouter({
   bookmark: bookmarkRouter,
   subscription: subscriptionRouter,
   calendar: calendarRouter,
+  handle: handleRouter,
 });
 
 export type AppRouter = typeof appRouter;

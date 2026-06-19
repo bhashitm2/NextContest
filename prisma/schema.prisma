@@ -44,6 +44,9 @@ model User {
   // Secret token for the user's personal subscribable contest calendar feed
   // (GET /api/calendar/<token>.ics). Generated lazily on first subscribe.
   calendarToken String?   @unique
+  // Public slug for the shareable profile page (GET /u/<username>). Set by the
+  // user during profile setup; null until chosen.
+  username      String?   @unique
 
   accounts Account[]
   sessions Session[]
@@ -165,14 +168,19 @@ model PlatformSubscription {
   @@unique([userId, platform])
 }
 
-// Pre-added for v0.5 (handle connect + Codolio-style verification) so the
-// identity release needs no migration churn.
+// v0.5 (handle connect + Codolio-style verification + cross-platform stats).
 model PlatformHandle {
   id               String    @id @default(cuid())
   userId           String
   platform         Platform
   handle           String
-  rating           Int?
+  rating           Int? // current rating
+  maxRating        Int? // peak rating
+  rank             String? // platform title, e.g. "Expert", "5★", "Cyan"
+  problemsSolved   Int? // headline count (cheap cross-platform aggregation)
+  // Rich payload: { difficulty:{easy,medium,hard}, contests, recentSolved:[…],
+  // solvedByMonth:[{month,count}], … }. Shape = ProfileStats.extra.
+  stats            Json?
   verified         Boolean   @default(false)
   verificationCode String?
   lastSynced       DateTime?

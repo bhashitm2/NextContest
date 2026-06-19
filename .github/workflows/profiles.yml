@@ -1,0 +1,24 @@
+# Free production scheduler for refreshing user profile stats.
+# Hits the secret-protected /api/cron/profiles endpoint daily.
+# Requires two repo secrets: APP_URL (deployed base URL) and CRON_SECRET.
+name: Refresh profiles
+
+on:
+  schedule:
+    - cron: "30 3 * * *" # daily at 03:30 UTC
+  workflow_dispatch: {} # allow manual runs
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger profile refresh
+        run: |
+          code=$(curl -sSL -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/profiles")
+          echo "HTTP $code"
+          cat /tmp/body.json
+          if [ "$code" != "200" ]; then
+            exit 1
+          fi

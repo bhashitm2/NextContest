@@ -47,6 +47,22 @@ export async function SiteHeader() {
           >
             Contests
           </Link>
+          {user ? (
+            <>
+              <Link
+                href="/profile"
+                className="hidden rounded-lg px-3 py-2 text-sm text-cp-dim transition-colors hover:text-cp-text sm:block"
+              >
+                Profile
+              </Link>
+              <Link
+                href="/settings"
+                className="hidden rounded-lg px-3 py-2 text-sm text-cp-dim transition-colors hover:text-cp-text sm:block"
+              >
+                Settings
+              </Link>
+            </>
+          ) : null}
 
           <span className="mx-1 hidden h-[22px] w-px bg-cp-line md:block" />
           <div className="hidden md:block">
