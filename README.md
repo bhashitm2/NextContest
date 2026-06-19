@@ -1,4 +1,4 @@
-# CP Contest Portal
+# NextContest
 
 One portal for every upcoming competitive-programming contest — Codeforces, LeetCode,
 AtCoder & CodeChef — aggregated into a single, always-fresh feed with reminders, calendar

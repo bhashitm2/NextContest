@@ -26,7 +26,7 @@ function getTransporter(): Transporter {
 /** Gmail rewrites the From to the authenticated account, so EMAIL_FROM should
  * use the same address (with an optional display name). */
 function fromAddress(): string {
-  return process.env.EMAIL_FROM || `CP Contest Portal <${process.env.GMAIL_USER}>`;
+  return process.env.EMAIL_FROM || `NextContest <${process.env.GMAIL_USER}>`;
 }
 
 export async function sendContestReminder(opts: {
@@ -41,7 +41,7 @@ export async function sendContestReminder(opts: {
 
   const html = `
   <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;color:#111">
-    <p style="font-size:14px;color:#666;margin:0 0 4px">CP Contest Portal</p>
+    <p style="font-size:14px;color:#666;margin:0 0 4px">NextContest</p>
     <h1 style="font-size:20px;margin:0 0 12px">A contest you bookmarked starts ${when}</h1>
     <div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin:12px 0">
       <p style="font-weight:600;font-size:16px;margin:0 0 6px">${opts.contestTitle}</p>
@@ -50,7 +50,7 @@ export async function sendContestReminder(opts: {
     </div>
     <p style="font-size:12px;color:#888;margin-top:16px">
       You're getting this because you bookmarked this contest on
-      <a href="${APP_URL}" style="color:#4f46e5">CP Contest Portal</a>.
+      <a href="${APP_URL}" style="color:#4f46e5">NextContest</a>.
     </p>
   </div>`;
 

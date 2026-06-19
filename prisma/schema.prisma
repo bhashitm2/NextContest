@@ -41,6 +41,9 @@ model User {
   emailVerified DateTime?
   image         String?
   createdAt     DateTime  @default(now())
+  // Secret token for the user's personal subscribable contest calendar feed
+  // (GET /api/calendar/<token>.ics). Generated lazily on first subscribe.
+  calendarToken String?   @unique
 
   accounts Account[]
   sessions Session[]

@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { ContestFeed } from "@/components/contest/contest-feed";
 
 export const metadata: Metadata = {
-  title: "Upcoming Contests — CP Contest Portal",
+  title: "Upcoming Contests — NextContest",
   description:
     "Every upcoming competitive programming contest across Codeforces, LeetCode, AtCoder and CodeChef, in one place.",
 };

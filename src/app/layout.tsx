@@ -26,7 +26,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CP Contest Portal — never miss a coding contest",
+  title: "NextContest — never miss a coding contest",
   description:
     "One portal for every upcoming competitive programming contest — Codeforces, LeetCode, AtCoder, CodeChef — with reminders so you never miss one.",
 };

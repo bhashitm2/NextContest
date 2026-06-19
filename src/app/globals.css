@@ -13,7 +13,7 @@
   --font-display: var(--font-space-grotesk), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 
-  /* CP Contest Portal design palette → Tailwind utilities (bg-cp-bg, text-cp-dim …) */
+  /* NextContest design palette → Tailwind utilities (bg-cp-bg, text-cp-dim …) */
   --color-cp-bg: var(--cp-bg);
   --color-cp-bg-soft: var(--cp-bg-soft);
   --color-cp-surface: var(--cp-surface);

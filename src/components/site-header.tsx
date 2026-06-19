@@ -30,7 +30,7 @@ export async function SiteHeader() {
             </svg>
           </span>
           <span className="hidden whitespace-nowrap font-display text-[17px] font-bold tracking-tight min-[360px]:inline">
-            CP Contest Portal
+            NextContest
           </span>
         </Link>
 

@@ -14,7 +14,7 @@ export type NormalizedContest = {
 
 /** Honest, identifiable user-agent (per our "rate-respectful scrapers" principle). */
 export const USER_AGENT =
-  "CPContestPortal/0.1 (+https://github.com/; contest aggregator)";
+  "NextContest/0.1 (+https://github.com/; contest aggregator)";
 
 /** fetch JSON with a timeout and an honest UA. Throws on non-2xx. */
 export async function fetchJson<T>(

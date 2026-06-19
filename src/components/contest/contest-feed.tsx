@@ -3,6 +3,7 @@
 import { CalendarX2 } from "lucide-react";
 import { useState } from "react";
 
+import { CalendarSubscribe } from "@/components/contest/calendar-subscribe";
 import { ContestCard } from "@/components/contest/contest-card";
 import { FollowBar } from "@/components/contest/follow-bar";
 import { StaleDataBanner } from "@/components/contest/stale-data-banner";
@@ -43,7 +44,12 @@ export function ContestFeed({ isAuthenticated }: { isAuthenticated: boolean }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {isAuthenticated ? <FollowBar /> : null}
+      {isAuthenticated ? (
+        <>
+          <FollowBar />
+          <CalendarSubscribe />
+        </>
+      ) : null}
 
       {/* filter pills */}
       <div className="flex flex-wrap items-center gap-[9px]">
