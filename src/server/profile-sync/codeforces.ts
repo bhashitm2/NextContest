@@ -52,6 +52,32 @@ function difficultyBucket(rating: number | undefined): "easy" | "medium" | "hard
   return "hard";
 }
 
+/** Pure: does any submission match the problem + COMPILATION_ERROR + time≥since? */
+export function cfHasCompileError(
+  subs: CfSubmission[],
+  key: string,
+  sinceSec: number,
+): boolean {
+  return subs.some(
+    (s) =>
+      problemKey(s.problem) === key &&
+      s.verdict === "COMPILATION_ERROR" &&
+      s.creationTimeSeconds >= sinceSec,
+  );
+}
+
+/** True if `handle` has a fresh Compilation Error submission to problem `key`. */
+export async function findCodeforcesCompileError(
+  handle: string,
+  key: string,
+  sinceSec: number,
+): Promise<boolean> {
+  const status = await fetchJson<CfStatusResponse>(
+    `${API}/user.status?handle=${encodeURIComponent(handle)}&from=1&count=50`,
+  );
+  return cfHasCompileError(status.result ?? [], key, sinceSec);
+}
+
 /** Confirm the handle exists; throw if not. Returns the canonical handle. */
 export async function validateCodeforces(handle: string): Promise<string> {
   const user = await userInfo(handle);

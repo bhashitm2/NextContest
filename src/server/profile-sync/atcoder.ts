@@ -104,6 +104,34 @@ function tableInt($: cheerio.CheerioAPI, label: string): number | null {
   return value;
 }
 
+/** Pure: does any submission match the problem + CE verdict + time≥since? */
+export function acHasCompileError(
+  subs: Submission[],
+  problemId: string,
+  sinceSec: number,
+): boolean {
+  return subs.some(
+    (s) => s.problem_id === problemId && s.result === "CE" && s.epoch_second >= sinceSec,
+  );
+}
+
+/** True if `handle` has a fresh Compile Error submission to `problemId` (kenkoooo). */
+export async function findAtCoderCompileError(
+  handle: string,
+  problemId: string,
+  sinceSec: number,
+): Promise<boolean> {
+  let subs: Submission[] = [];
+  try {
+    subs = await fetchJson<Submission[]>(
+      `${KENKO}/v3/user/submissions?user=${encodeURIComponent(handle)}&from_second=${Math.floor(sinceSec)}`,
+    );
+  } catch {
+    subs = [];
+  }
+  return acHasCompileError(subs, problemId, sinceSec);
+}
+
 export async function validateAtCoder(handle: string): Promise<string> {
   await loadProfile(handle); // throws on 404
   return handle;

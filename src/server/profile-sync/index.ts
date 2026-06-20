@@ -3,6 +3,7 @@ import type { Platform } from "@/generated/prisma/client";
 import {
   fetchCodeforcesStats,
   fetchCodeforcesVerificationField,
+  findCodeforcesCompileError,
   validateCodeforces,
 } from "./codeforces";
 import {
@@ -13,6 +14,7 @@ import {
 import {
   fetchAtCoderStats,
   fetchAtCoderVerificationField,
+  findAtCoderCompileError,
   validateAtCoder,
 } from "./atcoder";
 import {
@@ -81,6 +83,19 @@ export function fetchStats(platform: ProfilePlatform, handle: string): Promise<P
   return FNS[platform].stats(handle);
 }
 
+/** True if `handle` has a fresh Compilation Error on the pinned problem `key`
+ * (since `sinceSec`). Only Codeforces + AtCoder support this. */
+export function findCompileError(
+  platform: ProfilePlatform,
+  handle: string,
+  key: string,
+  sinceSec: number,
+): Promise<boolean> {
+  if (platform === "CODEFORCES") return findCodeforcesCompileError(handle, key, sinceSec);
+  if (platform === "ATCODER") return findAtCoderCompileError(handle, key, sinceSec);
+  throw new Error(`Compile-error verification not supported for ${platform}`);
+}
+
 /** Map normalized stats to a PlatformHandle update payload (sets lastSynced). */
 export function statsToHandleData(stats: ProfileStats) {
   return {
@@ -95,3 +110,10 @@ export function statsToHandleData(stats: ProfileStats) {
 
 export { VERIFICATION_FIELD } from "./types";
 export type { ProfileStats, ProfilePlatform } from "./types";
+export {
+  CE_LANGUAGE_HINT,
+  CE_SNIPPET,
+  type Challenge,
+  pickChallenge,
+  supportsSubmissionVerify,
+} from "./verify-challenge";

@@ -4,10 +4,15 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import {
+  CE_LANGUAGE_HINT,
+  CE_SNIPPET,
   fetchStats,
   fetchVerificationField,
+  findCompileError,
+  pickChallenge,
   type ProfilePlatform,
   statsToHandleData,
+  supportsSubmissionVerify,
   validateHandle,
   VERIFICATION_FIELD,
 } from "@/server/profile-sync";
@@ -18,6 +23,11 @@ const platformInput = z.enum(["CODEFORCES", "LEETCODE", "ATCODER", "CODECHEF"]);
 
 /** Re-fetch stats at most once per this window via the manual Refresh button. */
 const REFRESH_THROTTLE_MS = 60 * 1000;
+
+/** UI countdown for the compile-error challenge (purely cosmetic). */
+const CHALLENGE_WINDOW_MS = 3 * 60 * 1000;
+/** A challenge older than this is considered stale; user must restart. */
+const CHALLENGE_MAX_AGE_MS = 15 * 60 * 1000;
 
 /** Public, non-sensitive columns of a handle. */
 const PUBLIC_HANDLE_SELECT = {
@@ -117,6 +127,79 @@ export const handleRouter = createTRPCRouter({
       await ctx.db.platformHandle.update({
         where: { id: row.id },
         data: { verified: true, verificationCode: null },
+      });
+      try {
+        const stats = await fetchStats(platform, row.handle);
+        return await ctx.db.platformHandle.update({
+          where: { id: row.id },
+          data: statsToHandleData(stats),
+        });
+      } catch {
+        return ctx.db.platformHandle.findUnique({ where: { id: row.id } });
+      }
+    }),
+
+  /** Start a compile-error challenge: pin a random problem + record the time. */
+  startSubmissionChallenge: protectedProcedure
+    .input(z.object({ platform: platformInput }))
+    .mutation(async ({ ctx, input }) => {
+      const platform = input.platform as ProfilePlatform;
+      if (!supportsSubmissionVerify(platform)) {
+        badRequest("Compile-error verification isn't available for this platform.");
+      }
+      const row = await ctx.db.platformHandle.findUnique({
+        where: { userId_platform: { userId: ctx.userId, platform } },
+      });
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Handle not connected." });
+      if (row.verified) badRequest("This handle is already verified.");
+
+      const challenge = await pickChallenge(platform);
+      await ctx.db.platformHandle.update({
+        where: { id: row.id },
+        data: { verifyProblem: challenge.key, verifyStartedAt: new Date() },
+      });
+      return {
+        name: challenge.name,
+        submitUrl: challenge.submitUrl,
+        snippet: CE_SNIPPET,
+        languageHint: CE_LANGUAGE_HINT,
+        windowMs: CHALLENGE_WINDOW_MS,
+      };
+    }),
+
+  /** Confirm ownership by detecting a fresh compile-error submission. */
+  verifySubmission: protectedProcedure
+    .input(z.object({ platform: platformInput }))
+    .mutation(async ({ ctx, input }) => {
+      const platform = input.platform as ProfilePlatform;
+      const row = await ctx.db.platformHandle.findUnique({
+        where: { userId_platform: { userId: ctx.userId, platform } },
+      });
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Handle not connected." });
+      if (row.verified) return row;
+      if (!row.verifyProblem || !row.verifyStartedAt) {
+        badRequest("Start the challenge first.");
+      }
+      if (Date.now() - row.verifyStartedAt.getTime() > CHALLENGE_MAX_AGE_MS) {
+        badRequest("This challenge expired — start a new one.");
+      }
+
+      const sinceSec = Math.floor(row.verifyStartedAt.getTime() / 1000) - 5;
+      let found = false;
+      try {
+        found = await findCompileError(platform, row.handle, row.verifyProblem, sinceSec);
+      } catch {
+        badRequest("Couldn't reach the judge — try again in a moment.");
+      }
+      if (!found) {
+        badRequest(
+          "No compile-error submission found yet — submit one to the pinned problem, then check again. (AtCoder can take a minute to sync.)",
+        );
+      }
+
+      await ctx.db.platformHandle.update({
+        where: { id: row.id },
+        data: { verified: true, verifyProblem: null, verifyStartedAt: null, verificationCode: null },
       });
       try {
         const stats = await fetchStats(platform, row.handle);

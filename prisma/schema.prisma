@@ -193,6 +193,10 @@ model PlatformHandle {
   stats            Json?
   verified         Boolean   @default(false)
   verificationCode String?
+  // Compile-error verification (alternative to the bio-token method): the pinned
+  // challenge problem key (CF "4-A" / AtCoder "abc086_a") + when it was issued.
+  verifyProblem    String?
+  verifyStartedAt  DateTime?
   lastSynced       DateTime?
   createdAt        DateTime  @default(now())
 
