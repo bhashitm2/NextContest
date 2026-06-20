@@ -3,8 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
-import { AiVerdict } from "@/components/compare/ai-verdict";
-import { VsView } from "@/components/compare/vs-view";
+import { CompareStage } from "@/components/compare/compare-stage";
 import { SignInPrompt } from "@/components/profile/sign-in-prompt";
 import { loadComparison } from "@/server/compare/load";
 
@@ -78,10 +77,7 @@ export default async function ComparePage({
       </header>
 
       {hasData ? (
-        <div className="space-y-5">
-          <AiVerdict username={username} />
-          <VsView result={result} />
-        </div>
+        <CompareStage result={result} username={username} />
       ) : (
         <div className="rounded-[14px] border border-dashed border-cp-line bg-cp-surface p-8 text-center text-cp-dim">
           {!viewerHasData
