@@ -19,8 +19,11 @@ function useAvatarTexture(url: string | null): THREE.Texture | null {
     let alive = true;
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin("anonymous");
+    // Load via our same-origin proxy: OAuth avatar CDNs don't send CORS headers,
+    // which a WebGL texture requires. The proxy re-serves them same-origin.
+    const src = `/api/avatar?u=${encodeURIComponent(url)}`;
     loader.load(
-      url,
+      src,
       (t) => {
         t.colorSpace = THREE.SRGBColorSpace;
         if (alive) setTex(t);
@@ -169,7 +172,15 @@ export function Boxer({
       <Billboard position={[0, 2.05, 0]}>
         <mesh>
           <circleGeometry args={[0.26, 32]} />
-          <meshBasicMaterial color={tex ? "#ffffff" : col} map={tex ?? undefined} toneMapped={false} />
+          {/* key remounts the material when the texture arrives — adding `map`
+              to an already-compiled material doesn't recompile its shader, so it
+              would otherwise keep rendering the flat base color (white). */}
+          <meshBasicMaterial
+            key={tex ? "avatar" : "flat"}
+            color={tex ? "#ffffff" : col}
+            map={tex ?? undefined}
+            toneMapped={false}
+          />
         </mesh>
         <mesh position={[0, 0, -0.01]}>
           <ringGeometry args={[0.26, 0.31, 32]} />
