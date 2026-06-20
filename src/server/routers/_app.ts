@@ -2,6 +2,7 @@ import { createCallerFactory, createTRPCRouter } from "@/server/trpc";
 
 import { bookmarkRouter } from "./bookmark";
 import { calendarRouter } from "./calendar";
+import { compareRouter } from "./compare";
 import { contestRouter } from "./contest";
 import { friendRouter } from "./friend";
 import { handleRouter } from "./handle";
@@ -16,6 +17,7 @@ export const appRouter = createTRPCRouter({
   handle: handleRouter,
   user: userRouter,
   friend: friendRouter,
+  compare: compareRouter,
 });
 
 export type AppRouter = typeof appRouter;

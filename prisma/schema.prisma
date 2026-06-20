@@ -220,6 +220,19 @@ model Friendship {
   @@index([requesterId, status])
 }
 
+// v0.6 Phase 3. Caches the AI-written head-to-head verdict for a pair of users.
+// `pairKey` = the two user ids sorted + joined (direction-independent, so both
+// viewers share one cache). Regenerated only when `statsHash` changes or the row
+// is >24h old, to respect the Gemini free-tier rate limit.
+model ComparisonVerdict {
+  id        String   @id @default(cuid())
+  pairKey   String   @unique
+  statsHash String
+  verdict   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // Tracks per-source pipeline health so the UI can show a "stale data" banner
 // and the founder can be alerted on scraper failure.
 model SyncState {
