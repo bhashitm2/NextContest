@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { FriendsManager } from "@/components/friends/friends-manager";
 import { SignInPrompt } from "@/components/profile/sign-in-prompt";
 import { prisma } from "@/lib/db";
+import { createCaller } from "@/server/routers/_app";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 export default async function FriendsPage() {
   const session = await auth();
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return (
       <SignInPrompt
         redirectTo="/friends"
@@ -25,10 +26,13 @@ export default async function FriendsPage() {
     );
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { username: true },
-  });
+  // Server-prefetch the friends list + pending count so they paint instantly.
+  const caller = createCaller({ db: prisma, userId: session.user.id, headers: new Headers() });
+  const [friends, pendingCount, user] = await Promise.all([
+    caller.friend.list(),
+    caller.friend.pendingCount(),
+    prisma.user.findUnique({ where: { id: session.user.id }, select: { username: true } }),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-[720px] px-4 py-10 sm:px-[22px]">
@@ -41,7 +45,11 @@ export default async function FriendsPage() {
         </p>
       </header>
 
-      <FriendsManager myUsername={user?.username ?? null} />
+      <FriendsManager
+        myUsername={user?.username ?? null}
+        initialFriends={friends}
+        initialPendingCount={pendingCount}
+      />
     </main>
   );
 }

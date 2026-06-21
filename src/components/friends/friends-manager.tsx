@@ -1,68 +1,23 @@
 "use client";
 
-import { Check, Search, Swords, UserPlus, UserX, X } from "lucide-react";
+import { Check, ChevronRight, Search, Swords, UserPlus, UserX } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 
-function Avatar({
-  image,
-  name,
-  username,
-  size = 40,
-}: {
-  image: string | null;
-  name: string | null;
-  username: string | null;
-  size?: number;
-}) {
-  const initial = (name ?? username ?? "?").charAt(0).toUpperCase();
-  return image ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={image}
-      alt=""
-      style={{ width: size, height: size }}
-      className="shrink-0 rounded-full border border-cp-line object-cover"
-    />
-  ) : (
-    <span
-      style={{ width: size, height: size }}
-      className="grid shrink-0 place-items-center rounded-full text-sm font-bold text-cp-accent-ink"
-    >
-      <span className="grid size-full place-items-center rounded-full" style={{ background: "var(--cp-accent)" }}>
-        {initial}
-      </span>
-    </span>
-  );
-}
+import { FriendRow, type RouterOutputs } from "./friend-row";
 
-function FriendRow({
-  username,
-  name,
-  image,
-  right,
+export function FriendsManager({
+  myUsername,
+  initialFriends,
+  initialPendingCount,
 }: {
-  username: string | null;
-  name: string | null;
-  image: string | null;
-  right: React.ReactNode;
+  myUsername: string | null;
+  initialFriends: RouterOutputs["friend"]["list"];
+  initialPendingCount: number;
 }) {
-  return (
-    <div className="flex items-center gap-3 rounded-[12px] border border-cp-line bg-cp-surface px-3.5 py-2.5">
-      <Avatar image={image} name={name} username={username} />
-      <div className="min-w-0">
-        {name ? <div className="truncate text-[14px] font-semibold text-cp-text">{name}</div> : null}
-        <div className="truncate font-mono text-[12px] text-cp-dim">@{username}</div>
-      </div>
-      <div className="ml-auto flex shrink-0 items-center gap-1.5">{right}</div>
-    </div>
-  );
-}
-
-export function FriendsManager({ myUsername }: { myUsername: string | null }) {
   const utils = api.useUtils();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -72,28 +27,47 @@ export function FriendsManager({ myUsername }: { myUsername: string | null }) {
     return () => clearTimeout(id);
   }, [query]);
 
-  const results = api.friend.search.useQuery({ query: debounced }, { enabled: debounced.length >= 1 });
-  const friends = api.friend.list.useQuery();
-  const incoming = api.friend.incoming.useQuery();
-  const outgoing = api.friend.outgoing.useQuery();
+  const results = api.friend.search.useQuery(
+    { query: debounced },
+    { enabled: debounced.length >= 1 },
+  );
+  const friends = api.friend.list.useQuery(undefined, { initialData: initialFriends });
+  const pending = api.friend.pendingCount.useQuery(undefined, { initialData: initialPendingCount });
 
-  const invalidateAll = () => {
+  const invalidate = () => {
     utils.friend.search.invalidate();
     utils.friend.list.invalidate();
-    utils.friend.incoming.invalidate();
-    utils.friend.outgoing.invalidate();
     utils.friend.pendingCount.invalidate();
   };
 
-  const request = api.friend.request.useMutation({ onSuccess: invalidateAll });
-  const respond = api.friend.respond.useMutation({ onSuccess: invalidateAll });
-  const cancel = api.friend.cancel.useMutation({ onSuccess: invalidateAll });
-  const remove = api.friend.remove.useMutation({ onSuccess: invalidateAll });
-  const busy = request.isPending || respond.isPending || cancel.isPending || remove.isPending;
+  const request = api.friend.request.useMutation({ onSuccess: invalidate });
+  const respond = api.friend.respond.useMutation({ onSuccess: invalidate });
+  const remove = api.friend.remove.useMutation({ onSuccess: invalidate });
+  const busy = request.isPending || respond.isPending || remove.isPending;
+
+  const pendingCount = pending.data ?? 0;
+  const friendList = friends.data ?? [];
 
   return (
-    <div className="space-y-7">
-      {/* Your CodeTag */}
+    <div className="space-y-6">
+      {/* Requests entry */}
+      <Link
+        href="/friends/requests"
+        className="flex items-center justify-between rounded-[14px] border border-cp-line bg-cp-surface px-4 py-3.5 transition-colors hover:border-cp-accent"
+      >
+        <span className="flex items-center gap-2.5">
+          <UserPlus className="size-4 text-cp-accent" />
+          <span className="text-[14px] font-semibold text-cp-text">Requests</span>
+          {pendingCount > 0 ? (
+            <span className="grid min-w-[18px] place-items-center rounded-full bg-cp-accent px-1.5 text-[11px] font-bold leading-5 text-cp-accent-ink">
+              {pendingCount}
+            </span>
+          ) : null}
+        </span>
+        <ChevronRight className="size-4 text-cp-dim" />
+      </Link>
+
+      {/* CodeTag */}
       <div className="rounded-[14px] border border-cp-line bg-cp-surface p-4 sm:p-5">
         <h2 className="font-display text-[16px] font-bold">Your CodeTag</h2>
         {myUsername ? (
@@ -171,75 +145,16 @@ export function FriendsManager({ myUsername }: { myUsername: string | null }) {
         ) : null}
       </div>
 
-      {/* Incoming requests */}
-      {(incoming.data ?? []).length > 0 ? (
-        <div>
-          <h2 className="mb-2 font-display text-[16px] font-bold">
-            Requests <span className="text-cp-dim">({incoming.data!.length})</span>
-          </h2>
-          <div className="space-y-2">
-            {incoming.data!.map((r) => (
-              <FriendRow
-                key={r.id}
-                username={r.requester.username}
-                name={r.requester.name}
-                image={r.requester.image}
-                right={
-                  <>
-                    <Button size="sm" disabled={busy} onClick={() => respond.mutate({ requestId: r.id, accept: true })}>
-                      <Check /> Accept
-                    </Button>
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      disabled={busy}
-                      title="Decline"
-                      onClick={() => respond.mutate({ requestId: r.id, accept: false })}
-                    >
-                      <X />
-                    </Button>
-                  </>
-                }
-              />
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {/* Outgoing pending */}
-      {(outgoing.data ?? []).length > 0 ? (
-        <div>
-          <h2 className="mb-2 font-display text-[16px] font-bold">Sent</h2>
-          <div className="space-y-2">
-            {outgoing.data!.map((r) => (
-              <FriendRow
-                key={r.id}
-                username={r.addressee.username}
-                name={r.addressee.name}
-                image={r.addressee.image}
-                right={
-                  <Button size="sm" variant="ghost" disabled={busy} onClick={() => cancel.mutate({ requestId: r.id })}>
-                    Cancel
-                  </Button>
-                }
-              />
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       {/* Friends */}
       <div>
         <h2 className="mb-2 font-display text-[16px] font-bold">
-          Friends <span className="text-cp-dim">({(friends.data ?? []).length})</span>
+          Friends <span className="text-cp-dim">({friendList.length})</span>
         </h2>
-        {friends.isLoading ? (
-          <p className="px-1 text-[13px] text-cp-dim">Loading…</p>
-        ) : (friends.data ?? []).length === 0 ? (
+        {friendList.length === 0 ? (
           <p className="px-1 text-[13px] text-cp-dim">No friends yet — search by CodeTag above.</p>
         ) : (
           <div className="space-y-2">
-            {friends.data!.map((f) => (
+            {friendList.map((f) => (
               <FriendRow
                 key={f.username}
                 username={f.username}
