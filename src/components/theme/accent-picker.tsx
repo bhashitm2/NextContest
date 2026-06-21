@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export const ACCENTS = [
+  { name: "Blue", color: "#3b82f6", ink: "#0a1224" },
   { name: "Violet", color: "#a78bfa", ink: "#0b0a14" },
   { name: "Emerald", color: "#34d399", ink: "#07120c" },
   { name: "Cyan", color: "#22d3ee", ink: "#04141a" },
@@ -18,7 +19,7 @@ function applyAccent(color: string, ink: string) {
 }
 
 export function AccentPicker() {
-  const [active, setActive] = useState<string>("Violet");
+  const [active, setActive] = useState<string>("Blue");
 
   useEffect(() => {
     const saved = localStorage.getItem("cp-accent");

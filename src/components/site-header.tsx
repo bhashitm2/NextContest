@@ -1,9 +1,7 @@
-import { LogOut } from "lucide-react";
 import Link from "next/link";
 
 import { auth, signIn, signOut } from "@/auth";
-import { AccentPicker } from "@/components/theme/accent-picker";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { UserMenu } from "@/components/user-menu";
 import { prisma } from "@/lib/db";
 
 export async function SiteHeader() {
@@ -59,59 +57,35 @@ export async function SiteHeader() {
               >
                 Profile
               </Link>
-              <Link
-                href="/friends"
-                className="relative hidden rounded-lg px-3 py-2 text-sm text-cp-dim transition-colors hover:text-cp-text sm:block"
-              >
-                Friends
+              <div className="relative hidden sm:block">
+                <Link
+                  href="/friends"
+                  className="block rounded-lg px-3 py-2 text-sm text-cp-dim transition-colors hover:text-cp-text"
+                >
+                  Friends
+                </Link>
                 {pendingRequests > 0 ? (
-                  <span className="absolute right-0.5 top-1 grid min-w-[16px] place-items-center rounded-full bg-cp-accent px-1 text-[10px] font-bold leading-4 text-cp-accent-ink">
+                  <Link
+                    href="/friends/requests"
+                    title="Friend requests"
+                    className="absolute right-0.5 top-1 grid min-w-[16px] place-items-center rounded-full bg-cp-accent px-1 text-[10px] font-bold leading-4 text-cp-accent-ink"
+                  >
                     {pendingRequests}
-                  </span>
+                  </Link>
                 ) : null}
-              </Link>
-              <Link
-                href="/settings"
-                className="hidden rounded-lg px-3 py-2 text-sm text-cp-dim transition-colors hover:text-cp-text sm:block"
-              >
-                Settings
-              </Link>
+              </div>
             </>
           ) : null}
 
-          <span className="mx-1 hidden h-[22px] w-px bg-cp-line md:block" />
-          <div className="hidden md:block">
-            <AccentPicker />
-          </div>
-          <ThemeToggle />
-
           {user ? (
-            <div className="flex items-center gap-2">
-              <span
-                className="grid size-9 place-items-center rounded-full text-sm font-semibold text-cp-accent-ink"
-                style={{ background: "var(--cp-accent)" }}
-                title={user.name ?? user.email ?? ""}
-              >
-                {initial}
-              </span>
-              <span className="hidden max-w-[140px] truncate text-sm text-cp-dim lg:inline">
-                {user.name ?? user.email}
-              </span>
-              <form
-                action={async () => {
-                  "use server";
-                  await signOut({ redirectTo: "/" });
-                }}
-              >
-                <button
-                  type="submit"
-                  title="Sign out"
-                  className="grid size-9 place-items-center rounded-[9px] border border-cp-line bg-cp-surface text-cp-dim transition-colors hover:text-cp-text"
-                >
-                  <LogOut className="size-4" />
-                </button>
-              </form>
-            </div>
+            <UserMenu
+              name={user.name ?? user.email ?? "Account"}
+              initial={initial}
+              signOutAction={async () => {
+                "use server";
+                await signOut({ redirectTo: "/" });
+              }}
+            />
           ) : (
             <div className="flex items-center gap-2">
               <form

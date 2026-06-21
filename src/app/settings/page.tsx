@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { ProfileManager } from "@/components/profile/profile-manager";
 import { SignInPrompt } from "@/components/profile/sign-in-prompt";
+import { AccentPicker } from "@/components/theme/accent-picker";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export const metadata: Metadata = {
   title: "Settings — NextContest",
@@ -39,6 +41,24 @@ export default async function SettingsPage() {
       </header>
 
       <ProfileManager />
+
+      <section className="mt-6 rounded-[14px] border border-cp-line bg-cp-surface p-4 sm:p-5">
+        <h2 className="font-display text-[16px] font-bold">Appearance</h2>
+        <div className="mt-3 flex items-center justify-between gap-4">
+          <div>
+            <div className="text-[14px] font-medium text-cp-text">Theme</div>
+            <div className="text-[12px] text-cp-dim">Switch between dark and light.</div>
+          </div>
+          <ThemeToggle />
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-4 border-t border-cp-line pt-4">
+          <div>
+            <div className="text-[14px] font-medium text-cp-text">Accent</div>
+            <div className="text-[12px] text-cp-dim">Pick your highlight color.</div>
+          </div>
+          <AccentPicker />
+        </div>
+      </section>
     </main>
   );
 }
