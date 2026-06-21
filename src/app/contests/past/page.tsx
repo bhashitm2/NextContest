@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { auth } from "@/auth";
-import { PastContestCard } from "@/components/contest/past-contest-card";
+import { PastContestsFeed } from "@/components/contest/past-contests-feed";
 import { prisma } from "@/lib/db";
 import { createCaller } from "@/server/routers/_app";
 
@@ -13,8 +13,6 @@ export const metadata: Metadata = {
   description:
     "Recently finished contests across Codeforces, LeetCode, AtCoder and CodeChef — compare your performance head-to-head with a friend.",
 };
-
-const GRID = "grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3";
 
 export default async function PastContestsPage() {
   const session = await auth();
@@ -50,11 +48,7 @@ export default async function PastContestsPage() {
           No finished contests yet — check back after the next round wraps up.
         </div>
       ) : (
-        <div className={GRID}>
-          {contests.map((contest) => (
-            <PastContestCard key={contest.id} contest={contest} />
-          ))}
-        </div>
+        <PastContestsFeed contests={contests} />
       )}
     </main>
   );
