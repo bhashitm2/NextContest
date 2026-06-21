@@ -5,14 +5,16 @@ export type PlatformMeta = {
   short: string;
   /** CSS variable holding the (theme-aware) brand color. */
   cssVar: string;
+  /** Bundled brand-logo glyph in `public/logos/<logo>.svg` (null = none). */
+  logo: string | null;
 };
 
 export const PLATFORM_META: Record<Platform, PlatformMeta> = {
-  CODEFORCES: { label: "Codeforces", short: "CF", cssVar: "--cp-cf" },
-  LEETCODE: { label: "LeetCode", short: "LC", cssVar: "--cp-lc" },
-  ATCODER: { label: "AtCoder", short: "AC", cssVar: "--cp-ac" },
-  CODECHEF: { label: "CodeChef", short: "CC", cssVar: "--cp-cc" },
-  HACKERRANK: { label: "HackerRank", short: "HR", cssVar: "--cp-ac" },
+  CODEFORCES: { label: "Codeforces", short: "CF", cssVar: "--cp-cf", logo: "codeforces" },
+  LEETCODE: { label: "LeetCode", short: "LC", cssVar: "--cp-lc", logo: "leetcode" },
+  ATCODER: { label: "AtCoder", short: "AC", cssVar: "--cp-ac", logo: "atcoder" },
+  CODECHEF: { label: "CodeChef", short: "CC", cssVar: "--cp-cc", logo: "codechef" },
+  HACKERRANK: { label: "HackerRank", short: "HR", cssVar: "--cp-ac", logo: null },
 };
 
 /** A `var(--cp-…)` color string for use in inline styles (theme-aware). */

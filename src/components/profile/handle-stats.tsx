@@ -1,13 +1,27 @@
 import { LocalDate } from "@/components/local-date";
 import { type HandleView, parseStats } from "@/lib/profile";
+import { rankColor } from "@/lib/rank";
 
 import { DifficultyBar } from "./difficulty-bar";
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Stat({
+  label,
+  value,
+  sub,
+  valueColor,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  valueColor?: string | null;
+}) {
   return (
     <div className="rounded-[10px] border border-cp-line bg-cp-bg px-3 py-2.5">
       <div className="font-mono text-[11px] uppercase tracking-wide text-cp-faint">{label}</div>
-      <div className="mt-0.5 font-display text-[22px] font-bold leading-none tracking-tight">
+      <div
+        className="mt-0.5 font-display text-[22px] font-bold leading-none tracking-tight"
+        style={valueColor ? { color: valueColor } : undefined}
+      >
         {value}
       </div>
       {sub ? <div className="mt-1 text-[11px] text-cp-dim">{sub}</div> : null}
@@ -32,7 +46,11 @@ export function HandleStats({ handle }: { handle: HandleView }) {
           label="Solved"
           value={handle.problemsSolved != null ? handle.problemsSolved.toLocaleString() : "—"}
         />
-        <Stat label="Rank" value={handle.rank ?? "—"} />
+        <Stat
+          label="Rank"
+          value={handle.rank ?? "—"}
+          valueColor={rankColor(handle.platform, handle.rank)}
+        />
         <Stat label="Contests" value={extra.contests != null ? String(extra.contests) : "—"} />
       </div>
 

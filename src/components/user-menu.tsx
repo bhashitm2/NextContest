@@ -58,8 +58,13 @@ export function UserMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-[12px] border border-cp-line bg-cp-surface p-1"
-          style={{ boxShadow: "0 10px 34px rgba(0,0,0,0.4)" }}
+          className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-[12px] border border-cp-line-strong p-1 backdrop-blur-xl"
+          style={{
+            // Frosted-glass panel: high-opacity surface over a backdrop blur so it
+            // reads as opaque glass, not see-through (cp-surface alone is ~3% alpha).
+            background: "color-mix(in srgb, var(--cp-bg-soft) 92%, transparent)",
+            boxShadow: "0 10px 34px rgba(0,0,0,0.45)",
+          }}
         >
           <Link
             href="/settings"

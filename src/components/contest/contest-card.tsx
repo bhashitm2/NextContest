@@ -3,6 +3,7 @@ import { ArrowUpRight, CalendarDays, Clock } from "lucide-react";
 import { CardActions, type BookmarkState } from "@/components/contest/card-actions";
 import { CountdownTimer } from "@/components/contest/countdown-timer";
 import { LocalDate } from "@/components/local-date";
+import { PlatformLogo } from "@/components/platform-logo";
 import type { Contest } from "@/generated/prisma/client";
 import { formatDuration } from "@/lib/format";
 import { PLATFORM_META, platformColor } from "@/lib/platforms";
@@ -30,13 +31,13 @@ export function ContestCard({
         } as React.CSSProperties
       }
     >
-      {/* giant faint platform watermark */}
+      {/* giant faint platform logo watermark */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 grid place-items-center font-mono text-[110px] font-bold leading-none"
-        style={{ color, opacity: "var(--cp-wm)" }}
+        className="pointer-events-none absolute inset-0 grid place-items-center"
+        style={{ opacity: "var(--cp-wm)" }}
       >
-        {meta.short}
+        <PlatformLogo platform={contest.platform} size={150} color={color} />
       </div>
 
       <div className="relative px-[17px] pt-[17px]">
@@ -49,7 +50,7 @@ export function ContestCard({
               color,
             }}
           >
-            <span className="size-1.5 rounded-full" style={{ background: color }} />
+            <PlatformLogo platform={contest.platform} size={13} color={color} />
             {meta.label}
           </span>
           {contest.difficulty ? (

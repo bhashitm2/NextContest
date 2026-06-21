@@ -1,5 +1,6 @@
 import { ArrowUpRight, Crown, Minus } from "lucide-react";
 
+import { PlatformLogo } from "@/components/platform-logo";
 import { avatarSrc } from "@/lib/avatar";
 import type { ContestCategory, ContestCompareResult, ContestSide } from "@/lib/contest-compare";
 import { PLATFORM_META, platformColor } from "@/lib/platforms";
@@ -150,7 +151,7 @@ export function ContestVsView({
           className="flex items-center justify-center gap-1.5 border-t border-cp-line px-5 py-2.5 text-[12px] font-medium transition-colors hover:opacity-80"
           style={{ color }}
         >
-          <span className="size-1.5 rounded-full" style={{ background: color }} />
+          <PlatformLogo platform={platform} size={14} color={color} />
           On {meta.label}: {contestTitle}
           <ArrowUpRight className="size-3" />
         </a>

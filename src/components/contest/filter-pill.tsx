@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { cn } from "@/lib/utils";
 
 /** A multi-select platform filter pill (shared by the upcoming + past feeds). */
@@ -9,12 +11,15 @@ export function FilterPill({
   count,
   active,
   onClick,
+  icon,
 }: {
   label: string;
   color?: string;
   count?: number;
   active: boolean;
   onClick: () => void;
+  /** Leading glyph (e.g. a platform logo). Falls back to a color dot. */
+  icon?: ReactNode;
 }) {
   return (
     <button
@@ -35,7 +40,7 @@ export function FilterPill({
           : undefined
       }
     >
-      {color ? <span className="size-2 rounded-full" style={{ background: color }} /> : null}
+      {icon ?? (color ? <span className="size-2 rounded-full" style={{ background: color }} /> : null)}
       {label}
       {typeof count === "number" ? (
         <span className="font-mono text-[11px] opacity-70">{count}</span>

@@ -8,6 +8,7 @@ import { ContestCard } from "@/components/contest/contest-card";
 import { FilterPill } from "@/components/contest/filter-pill";
 import { FollowBar } from "@/components/contest/follow-bar";
 import { StaleDataBanner } from "@/components/contest/stale-data-banner";
+import { PlatformLogo } from "@/components/platform-logo";
 import type { Platform } from "@/generated/prisma/client";
 import { ACTIVE_PLATFORMS, PLATFORM_META, platformColor } from "@/lib/platforms";
 import { api } from "@/trpc/react";
@@ -63,6 +64,7 @@ export function ContestFeed({ isAuthenticated }: { isAuthenticated: boolean }) {
             count={counts[p]}
             active={selected.includes(p)}
             onClick={() => toggle(p)}
+            icon={<PlatformLogo platform={p} size={14} color={platformColor(p)} />}
           />
         ))}
       </div>

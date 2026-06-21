@@ -2,6 +2,7 @@ import { ArrowUpRight, CalendarCheck, Swords } from "lucide-react";
 import Link from "next/link";
 
 import { LocalDate } from "@/components/local-date";
+import { PlatformLogo } from "@/components/platform-logo";
 import type { Contest } from "@/generated/prisma/client";
 import { PLATFORM_META, platformColor } from "@/lib/platforms";
 
@@ -24,10 +25,10 @@ export function PastContestCard({ contest }: { contest: Contest }) {
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 grid place-items-center font-mono text-[110px] font-bold leading-none"
-        style={{ color, opacity: "var(--cp-wm)" }}
+        className="pointer-events-none absolute inset-0 grid place-items-center"
+        style={{ opacity: "var(--cp-wm)" }}
       >
-        {meta.short}
+        <PlatformLogo platform={contest.platform} size={150} color={color} />
       </div>
 
       <div className="relative px-[17px] pt-[17px]">
@@ -40,7 +41,7 @@ export function PastContestCard({ contest }: { contest: Contest }) {
               color,
             }}
           >
-            <span className="size-1.5 rounded-full" style={{ background: color }} />
+            <PlatformLogo platform={contest.platform} size={13} color={color} />
             {meta.label}
           </span>
           {contest.difficulty ? (

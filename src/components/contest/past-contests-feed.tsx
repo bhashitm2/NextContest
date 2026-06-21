@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { FilterPill } from "@/components/contest/filter-pill";
 import { PastContestCard } from "@/components/contest/past-contest-card";
+import { PlatformLogo } from "@/components/platform-logo";
 import type { Contest, Platform } from "@/generated/prisma/client";
 import { ACTIVE_PLATFORMS, PLATFORM_META, platformColor } from "@/lib/platforms";
 
@@ -40,6 +41,7 @@ export function PastContestsFeed({ contests }: { contests: Contest[] }) {
             count={counts[p]}
             active={selected.includes(p)}
             onClick={() => toggle(p)}
+            icon={<PlatformLogo platform={p} size={14} color={platformColor(p)} />}
           />
         ))}
       </div>

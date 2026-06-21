@@ -1,15 +1,20 @@
+import { PlatformLogo } from "@/components/platform-logo";
 import type { Platform } from "@/generated/prisma/client";
 import { PLATFORM_META, platformColor } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 
-/** Small brand-colored platform pill. */
+/** Small brand-colored platform pill with the platform logo. */
 export function PlatformChip({ platform, className }: { platform: Platform; className?: string }) {
   const color = platformColor(platform);
   return (
     <span
-      className={cn("inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-semibold", className)}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold",
+        className,
+      )}
       style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}
     >
+      <PlatformLogo platform={platform} size={13} color={color} />
       {PLATFORM_META[platform].label}
     </span>
   );
