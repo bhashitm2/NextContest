@@ -237,6 +237,29 @@ model ComparisonVerdict {
   updatedAt DateTime @updatedAt
 }
 
+// v1.0 per-contest compare. Caches one user's finalized performance (rank +
+// rating change) on a single rated contest. Results are IMMUTABLE once a
+// contest is rated, so a row never needs refreshing — keyed by handle (not
+// userId) so the cache is reusable across the viewer/friend roles and survives
+// handle changes. Only successful ("ok") fetches are cached; the pending /
+// not-participated / unavailable states are transient and re-checked each view.
+model ContestResult {
+  id             String   @id @default(cuid())
+  platform       Platform
+  externalId     String // matches Contest.externalId
+  handle         String // lowercased platform handle
+  rank           Int?
+  ratingBefore   Int?
+  ratingAfter    Int?
+  ratingDelta    Int?
+  problemsSolved Int?
+  performance    Int?
+  fetchedAt      DateTime @default(now())
+
+  @@unique([platform, externalId, handle])
+  @@index([platform, externalId])
+}
+
 // Tracks per-source pipeline health so the UI can show a "stale data" banner
 // and the founder can be alerted on scraper failure.
 model SyncState {

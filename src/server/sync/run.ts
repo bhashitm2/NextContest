@@ -6,7 +6,7 @@ import { syncAllAutoBookmarks } from "./auto-bookmarks";
 import { fetchCodeChef } from "./codechef";
 import { fetchCodeforces } from "./codeforces";
 import { fetchLeetCode } from "./leetcode";
-import type { NormalizedContest } from "./types";
+import { type NormalizedContest, PRUNE_WINDOW_DAYS, pruneCutoffMs } from "./types";
 
 export type SyncResult = {
   source: Platform;
@@ -66,6 +66,27 @@ const SOURCES: { source: Platform; fetchFn: () => Promise<NormalizedContest[]> }
   { source: "ATCODER", fetchFn: fetchAtCoder },
 ];
 
+/**
+ * Retention: keep only ~6 months of contests. Deletes contests that started
+ * before the prune cutoff (cascades to their Bookmarks + CalendarTombstones)
+ * and drops now-orphaned ContestResult cache rows (no FK to Contest). Returns
+ * the number of contests removed. Best-effort — callers swallow failures.
+ */
+export async function pruneOldContests(): Promise<number> {
+  const { count } = await prisma.contest.deleteMany({
+    where: { startTime: { lt: new Date(pruneCutoffMs()) } },
+  });
+  // ContestResult has no FK to Contest, so clean up cache rows whose contest is
+  // gone (the per-contest compare can't be opened for a deleted contest anyway).
+  await prisma.$executeRaw`
+    DELETE FROM "ContestResult" cr
+    WHERE NOT EXISTS (
+      SELECT 1 FROM "Contest" c
+      WHERE c.platform = cr.platform AND c."externalId" = cr."externalId"
+    )`;
+  return count;
+}
+
 /** Run all API-based syncs concurrently and independently. */
 export async function runAllSyncs(): Promise<SyncResult[]> {
   const results = await Promise.all(
@@ -76,6 +97,13 @@ export async function runAllSyncs(): Promise<SyncResult[]> {
     await syncAllAutoBookmarks();
   } catch {
     // auto-bookmark fan-out is best-effort; contest data already saved above.
+  }
+  // Enforce the ~6-month retention window (never block the sync on cleanup).
+  try {
+    const pruned = await pruneOldContests();
+    if (pruned > 0) console.log(`[sync] pruned ${pruned} contests older than ${PRUNE_WINDOW_DAYS}d`);
+  } catch (err) {
+    console.error("[sync] prune failed", err);
   }
   return results;
 }

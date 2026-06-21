@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { auth } from "@/auth";
 import { ContestFeed } from "@/components/contest/contest-feed";
@@ -32,6 +33,12 @@ export default async function ContestsPage() {
             />
             LIVE
           </span>
+          <Link
+            href="/contests/past"
+            className="ml-auto shrink-0 text-[13px] text-cp-dim transition-colors hover:text-cp-text"
+          >
+            Past contests →
+          </Link>
         </div>
         <p className="text-[15px] text-cp-dim">
           Every upcoming round across Codeforces, LeetCode, AtCoder &amp; CodeChef — in one place.

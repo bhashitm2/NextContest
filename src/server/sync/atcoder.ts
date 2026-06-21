@@ -1,11 +1,60 @@
 import * as cheerio from "cheerio";
 
-import { difficultyFromTitle, type NormalizedContest, USER_AGENT } from "./types";
+import {
+  difficultyFromTitle,
+  fetchJson,
+  type NormalizedContest,
+  pastCutoffMs,
+  USER_AGENT,
+} from "./types";
 
 // AtCoder has no official API. The community kenkoooo dataset lags, so we scrape
 // the official "Upcoming Contests" table — the source of truth (server-rendered
 // HTML, no headless browser needed).
 const AC_URL = "https://atcoder.jp/contests/";
+// Full historical contest list (id, start, duration, title) for the back-fill.
+const AC_PAST_URL = "https://kenkoooo.com/atcoder/resources/contests.json";
+
+type KenkoContest = {
+  id: string;
+  start_epoch_second: number;
+  duration_second: number;
+  title: string;
+  rate_change: string; // "-" for unrated
+};
+
+/** Finished, rated AtCoder contests within the back-fill window (kenkoooo).
+ * Best-effort: any failure yields an empty list so upcoming still syncs. */
+async function fetchAtCoderPast(): Promise<NormalizedContest[]> {
+  const cutoffSec = pastCutoffMs() / 1000;
+  const nowSec = Date.now() / 1000;
+  try {
+    const all = await fetchJson<KenkoContest[]>(AC_PAST_URL, { timeoutMs: 25_000 });
+    if (!Array.isArray(all)) return [];
+    return all
+      .filter(
+        (c) =>
+          c.rate_change !== "-" && // skip unrated
+          c.start_epoch_second >= cutoffSec &&
+          c.start_epoch_second + c.duration_second < nowSec, // finished only
+      )
+      .map((c) => {
+        const startTime = new Date(c.start_epoch_second * 1000);
+        return {
+          platform: "ATCODER",
+          externalId: c.id,
+          title: c.title,
+          url: `https://atcoder.jp/contests/${c.id}`,
+          startTime,
+          endTime: new Date(startTime.getTime() + c.duration_second * 1000),
+          durationSeconds: c.duration_second,
+          difficulty: difficultyFromTitle(c.title),
+        } satisfies NormalizedContest;
+      });
+  } catch {
+    return [];
+  }
+}
 
 export async function fetchAtCoder(): Promise<NormalizedContest[]> {
   const res = await fetch(AC_URL, {
@@ -50,5 +99,6 @@ export async function fetchAtCoder(): Promise<NormalizedContest[]> {
     });
   });
 
-  return out;
+  const past = await fetchAtCoderPast();
+  return [...out, ...past];
 }

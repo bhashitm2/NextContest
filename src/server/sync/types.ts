@@ -39,6 +39,24 @@ export async function fetchJson<T>(
   }
 }
 
+/** How far back to back-fill finished contests (≈6 months). */
+export const PAST_WINDOW_DAYS = 183;
+
+/** Retention: contests older than this are pruned. A few days LONGER than the
+ * back-fill window so a contest right at the boundary isn't deleted then
+ * re-fetched on the next sync (avoids churn). */
+export const PRUNE_WINDOW_DAYS = 190;
+
+/** Epoch ms cutoff: contests that started before this aren't back-filled. */
+export function pastCutoffMs(): number {
+  return Date.now() - PAST_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+}
+
+/** Epoch ms cutoff: contests that started before this are pruned (retention). */
+export function pruneCutoffMs(): number {
+  return Date.now() - PRUNE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+}
+
 /** Best-effort difficulty/label extraction from a contest title. */
 export function difficultyFromTitle(title: string): string | null {
   const div = title.match(/Div\.?\s*\d/i);
