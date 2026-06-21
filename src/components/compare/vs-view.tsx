@@ -1,5 +1,6 @@
 import { Crown, Minus } from "lucide-react";
 
+import { avatarSrc } from "@/lib/avatar";
 import type { CompareCategory, CompareResult, TopicLead, Winner } from "@/lib/compare";
 import { platformColor } from "@/lib/platforms";
 
@@ -19,10 +20,11 @@ function Avatar({
   size?: number;
 }) {
   const initial = label.charAt(0).toUpperCase();
-  return image ? (
+  const src = avatarSrc(image);
+  return src ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={image}
+      src={src}
       alt=""
       style={{ width: size, height: size, boxShadow: `0 0 0 3px ${ring}` }}
       className="rounded-full border border-cp-line object-cover"

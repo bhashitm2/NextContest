@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ProfileBody } from "@/components/profile/profile-body";
+import { avatarSrc } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 import { totalSolved } from "@/lib/profile";
 import { normalizeUsername } from "@/lib/username";
@@ -70,10 +71,10 @@ export default async function PublicProfilePage({
   return (
     <main className="mx-auto w-full max-w-[840px] px-4 py-10 sm:px-[22px]">
       <header className="mb-6 flex items-center gap-4">
-        {profile.image ? (
+        {avatarSrc(profile.image) ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={profile.image}
+            src={avatarSrc(profile.image)!}
             alt=""
             className="size-14 rounded-full border border-cp-line object-cover"
           />

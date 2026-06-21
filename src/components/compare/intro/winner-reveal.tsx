@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { avatarSrc } from "@/lib/avatar";
 import type { BoxingCast } from "@/lib/compare-cast";
 import { castWinner } from "@/lib/compare-cast";
 
@@ -45,10 +46,10 @@ export function WinnerReveal({ cast, onDone }: { cast: BoxingCast; onDone: () =>
             className="grid size-[120px] place-items-center rounded-full text-4xl font-bold text-cp-accent-ink"
             style={{ background: color, boxShadow: `0 0 0 4px ${color}, 0 0 60px ${color}` }}
           >
-            {winner!.avatar ? (
+            {avatarSrc(winner!.avatar) ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={winner!.avatar}
+                src={avatarSrc(winner!.avatar)!}
                 alt=""
                 className="size-full rounded-full object-cover"
               />

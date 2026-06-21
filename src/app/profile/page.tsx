@@ -4,6 +4,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { ProfileBody } from "@/components/profile/profile-body";
 import { SignInPrompt } from "@/components/profile/sign-in-prompt";
+import { avatarSrc } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -58,9 +59,9 @@ export default async function ProfilePage() {
   return (
     <main className="mx-auto w-full max-w-[840px] px-4 py-10 sm:px-[22px]">
       <header className="mb-6 flex flex-wrap items-center gap-4">
-        {user?.image ? (
+        {avatarSrc(user?.image) ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.image} alt="" className="size-14 rounded-full border border-cp-line object-cover" />
+          <img src={avatarSrc(user?.image)!} alt="" className="size-14 rounded-full border border-cp-line object-cover" />
         ) : (
           <span
             className="grid size-14 place-items-center rounded-full text-xl font-bold text-cp-accent-ink"
