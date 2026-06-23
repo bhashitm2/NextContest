@@ -42,12 +42,17 @@ const PUBLIC_HANDLE_SELECT = {
   lastSynced: true,
 } as const;
 
-/** A short, user-pasteable verification token — random letters only, e.g.
- * "aXbQmRtKpL". Length keeps it unlikely to collide with normal profile text
- * (we scan a profile field for it via .includes). */
-function newVerificationCode(): string {
-  const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const bytes = randomBytes(10);
+/** A short, user-pasteable verification token (random letters; we scan a profile
+ * field for it via .includes). Code360 auto-formats its Name field and would
+ * "camel-ize" mixed case, so it gets a LOWERCASE-only token (no case boundaries →
+ * survives intact; verification for Code360 is also case-insensitive, see `verify`).
+ * Every other platform keeps the higher-entropy mixed-case token + exact match. */
+function newVerificationCode(platform: ProfilePlatform): string {
+  const lowerOnly = platform === "CODE360";
+  const alphabet = lowerOnly
+    ? "abcdefghijklmnopqrstuvwxyz"
+    : "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const bytes = randomBytes(lowerOnly ? 12 : 10);
   let out = "";
   for (const b of bytes) out += alphabet[b % alphabet.length];
   return out;
@@ -99,7 +104,7 @@ export const handleRouter = createTRPCRouter({
         badRequest(err instanceof Error ? err.message : "Could not find that handle.");
       }
 
-      const code = newVerificationCode();
+      const code = newVerificationCode(platform);
       await ctx.db.platformHandle.create({
         data: { userId: ctx.userId, platform, handle: canonical, verificationCode: code },
       });
@@ -124,7 +129,14 @@ export const handleRouter = createTRPCRouter({
       } catch (err) {
         badRequest(err instanceof Error ? err.message : "Could not read your profile.");
       }
-      if (!field.includes(row.verificationCode!)) {
+      // Code360 reformats the Name (capitalizes it), so match case-insensitively
+      // there; every other platform stays an exact match.
+      const code = row.verificationCode!;
+      const found =
+        platform === "CODE360"
+          ? field.toLowerCase().includes(code.toLowerCase())
+          : field.includes(code);
+      if (!found) {
         badRequest(
           `Couldn't find ${row.verificationCode} in your ${VERIFICATION_FIELD[platform]} yet. Save it on the platform, then try again.`,
         );
