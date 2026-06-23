@@ -51,8 +51,21 @@ export function bucketByMonth(dates: Date[]): SolvedMonth[] {
   return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([month, count]) => ({ month, count }));
 }
 
+/** Platforms the profile feature can fetch stats for — the single source of truth
+ * (drives the `ProfilePlatform` type, the `handle` router's input enum, and the
+ * profile-sync registries). Append a platform here when its fetchers land. */
+export const PROFILE_PLATFORM_VALUES = [
+  "CODEFORCES",
+  "LEETCODE",
+  "ATCODER",
+  "CODECHEF",
+  "GEEKSFORGEEKS",
+  "CODE360",
+  "HACKERRANK",
+] as const satisfies readonly Platform[];
+
 /** A platform the profile feature can fetch stats for. */
-export type ProfilePlatform = Extract<Platform, "CODEFORCES" | "LEETCODE" | "ATCODER" | "CODECHEF">;
+export type ProfilePlatform = (typeof PROFILE_PLATFORM_VALUES)[number];
 
 /** Where the verification token must be pasted, per platform (shown in the UI). */
 export const VERIFICATION_FIELD: Record<ProfilePlatform, string> = {
@@ -60,4 +73,7 @@ export const VERIFICATION_FIELD: Record<ProfilePlatform, string> = {
   LEETCODE: "README / Summary (Edit Profile)",
   ATCODER: "Affiliation (Settings → General Settings)",
   CODECHEF: "Name (Edit Profile)",
+  GEEKSFORGEEKS: "Name (Edit Profile)",
+  CODE360: "Name (Edit Profile)",
+  HACKERRANK: "Name (Settings → Profile)",
 };

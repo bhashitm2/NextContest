@@ -22,7 +22,18 @@ import {
   fetchCodeChefVerificationField,
   validateCodeChef,
 } from "./codechef";
-import { type ProfilePlatform, type ProfileStats } from "./types";
+import {
+  fetchGeeksforGeeksStats,
+  fetchGeeksforGeeksVerificationField,
+  validateGeeksforGeeks,
+} from "./geeksforgeeks";
+import { fetchCode360Stats, fetchCode360VerificationField, validateCode360 } from "./code360";
+import {
+  fetchHackerRankStats,
+  fetchHackerRankVerificationField,
+  validateHackerRank,
+} from "./hackerrank";
+import { type ProfilePlatform, PROFILE_PLATFORM_VALUES, type ProfileStats } from "./types";
 
 type PlatformFns = {
   validate: (handle: string) => Promise<string>;
@@ -51,15 +62,25 @@ const FNS: Record<ProfilePlatform, PlatformFns> = {
     verificationField: fetchCodeChefVerificationField,
     stats: fetchCodeChefStats,
   },
+  GEEKSFORGEEKS: {
+    validate: validateGeeksforGeeks,
+    verificationField: fetchGeeksforGeeksVerificationField,
+    stats: fetchGeeksforGeeksStats,
+  },
+  CODE360: {
+    validate: validateCode360,
+    verificationField: fetchCode360VerificationField,
+    stats: fetchCode360Stats,
+  },
+  HACKERRANK: {
+    validate: validateHackerRank,
+    verificationField: fetchHackerRankVerificationField,
+    stats: fetchHackerRankStats,
+  },
 };
 
-/** Platforms the profile feature supports (HackerRank reserved). */
-export const PROFILE_PLATFORMS: ProfilePlatform[] = [
-  "CODEFORCES",
-  "LEETCODE",
-  "ATCODER",
-  "CODECHEF",
-];
+/** Platforms the profile feature supports (single source of truth in types.ts). */
+export const PROFILE_PLATFORMS: ProfilePlatform[] = [...PROFILE_PLATFORM_VALUES];
 
 export function isProfilePlatform(p: Platform): p is ProfilePlatform {
   return (PROFILE_PLATFORMS as Platform[]).includes(p);
@@ -108,7 +129,7 @@ export function statsToHandleData(stats: ProfileStats) {
   };
 }
 
-export { VERIFICATION_FIELD } from "./types";
+export { PROFILE_PLATFORM_VALUES, VERIFICATION_FIELD } from "./types";
 export type { ProfileStats, ProfilePlatform } from "./types";
 export {
   CE_LANGUAGE_HINT,

@@ -30,6 +30,9 @@
   --color-cp-lc: var(--cp-lc);
   --color-cp-ac: var(--cp-ac);
   --color-cp-cc: var(--cp-cc);
+  --color-cp-gfg: var(--cp-gfg);
+  --color-cp-c360: var(--cp-c360);
+  --color-cp-hr: var(--cp-hr);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -86,6 +89,9 @@
   --cp-lc: #d98412;
   --cp-ac: #5b6473;
   --cp-cc: #9c6722;
+  --cp-gfg: #2f8d46;
+  --cp-c360: #f2701f;
+  --cp-hr: #00a94f;
 
   --background: var(--cp-bg);
   --foreground: var(--cp-text);
@@ -113,6 +119,9 @@
   --cp-lc: #ffa116;
   --cp-ac: #9aa7b8;
   --cp-cc: #c2823f;
+  --cp-gfg: #43a95b;
+  --cp-c360: #ff8c3b;
+  --cp-hr: #2ec866;
 
   --background: var(--cp-bg);
   --foreground: var(--cp-text);

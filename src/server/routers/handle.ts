@@ -10,6 +10,7 @@ import {
   fetchVerificationField,
   findCompileError,
   pickChallenge,
+  PROFILE_PLATFORM_VALUES,
   type ProfilePlatform,
   statsToHandleData,
   supportsSubmissionVerify,
@@ -19,7 +20,7 @@ import {
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/trpc";
 import { normalizeUsername, validateUsername } from "@/lib/username";
 
-const platformInput = z.enum(["CODEFORCES", "LEETCODE", "ATCODER", "CODECHEF"]);
+const platformInput = z.enum(PROFILE_PLATFORM_VALUES);
 
 /** Re-fetch stats at most once per this window via the manual Refresh button. */
 const REFRESH_THROTTLE_MS = 60 * 1000;

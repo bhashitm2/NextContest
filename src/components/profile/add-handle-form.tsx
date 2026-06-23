@@ -5,13 +5,14 @@ import { useState } from "react";
 
 import type { Platform } from "@/generated/prisma/client";
 import { Button } from "@/components/ui/button";
-import { ACTIVE_PLATFORMS, PLATFORM_META, platformColor } from "@/lib/platforms";
+import { PLATFORM_META, platformColor, PROFILE_PLATFORM_LIST } from "@/lib/platforms";
+import type { ProfilePlatform } from "@/server/profile-sync";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 export function AddHandleForm({ connected }: { connected: Set<Platform> }) {
   const utils = api.useUtils();
-  const available = ACTIVE_PLATFORMS.filter((p) => !connected.has(p));
+  const available = PROFILE_PLATFORM_LIST.filter((p) => !connected.has(p));
   const [platform, setPlatform] = useState<Platform | null>(available[0] ?? null);
   const [handle, setHandle] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export function AddHandleForm({ connected }: { connected: Set<Platform> }) {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!handle.trim() || !selected) return;
-    add.mutate({ platform: selected as "CODEFORCES" | "LEETCODE" | "ATCODER" | "CODECHEF", handle });
+    add.mutate({ platform: selected as ProfilePlatform, handle });
   }
 
   return (

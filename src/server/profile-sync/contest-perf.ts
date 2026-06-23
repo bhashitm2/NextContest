@@ -271,9 +271,10 @@ async function fetchCodeChefPerf(handle: string, ref: ContestRef): Promise<Conte
 // Dispatcher — one platform's outage can't 500 the request.
 // --------------------------------------------------------------------------
 
-const FETCHERS: Record<
-  ProfilePlatform,
-  (handle: string, ref: ContestRef) => Promise<ContestPerfResult>
+// Partial: profile-only platforms (GeeksforGeeks, Code360, …) have no per-contest
+// history, so they simply have no entry and degrade to `unavailable`.
+const FETCHERS: Partial<
+  Record<ProfilePlatform, (handle: string, ref: ContestRef) => Promise<ContestPerfResult>>
 > = {
   CODEFORCES: fetchCodeforcesPerf,
   ATCODER: fetchAtCoderPerf,
@@ -288,8 +289,10 @@ export async function fetchContestPerformance(
   handle: string,
   ref: ContestRef,
 ): Promise<ContestPerfResult> {
+  const fetcher = FETCHERS[platform];
+  if (!fetcher) return { state: "unavailable" };
   try {
-    return await FETCHERS[platform](handle, ref);
+    return await fetcher(handle, ref);
   } catch {
     return { state: "unavailable" };
   }

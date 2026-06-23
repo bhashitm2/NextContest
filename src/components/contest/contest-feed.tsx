@@ -10,7 +10,7 @@ import { FollowBar } from "@/components/contest/follow-bar";
 import { StaleDataBanner } from "@/components/contest/stale-data-banner";
 import { PlatformLogo } from "@/components/platform-logo";
 import type { Platform } from "@/generated/prisma/client";
-import { ACTIVE_PLATFORMS, PLATFORM_META, platformColor } from "@/lib/platforms";
+import { CONTEST_PLATFORMS, PLATFORM_META, platformColor } from "@/lib/platforms";
 import { api } from "@/trpc/react";
 
 // Platform filter pills are shared with the past-contests feed (see filter-pill.tsx).
@@ -33,7 +33,7 @@ export function ContestFeed({ isAuthenticated }: { isAuthenticated: boolean }) {
 
   const all = query.data?.items ?? [];
   const counts = Object.fromEntries(
-    ACTIVE_PLATFORMS.map((p) => [p, all.filter((c) => c.platform === p).length]),
+    CONTEST_PLATFORMS.map((p) => [p, all.filter((c) => c.platform === p).length]),
   ) as Record<Platform, number>;
 
   const shown = selected.length ? all.filter((c) => selected.includes(c.platform)) : all;
@@ -56,7 +56,7 @@ export function ContestFeed({ isAuthenticated }: { isAuthenticated: boolean }) {
       {/* filter pills */}
       <div className="flex flex-wrap items-center gap-[9px]">
         <FilterPill label="All" active={selected.length === 0} onClick={() => setSelected([])} />
-        {ACTIVE_PLATFORMS.map((p) => (
+        {CONTEST_PLATFORMS.map((p) => (
           <FilterPill
             key={p}
             label={PLATFORM_META[p].label}

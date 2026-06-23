@@ -2,7 +2,7 @@
 
 import { Bell, BellRing, Loader2 } from "lucide-react";
 
-import { ACTIVE_PLATFORMS, PLATFORM_META, platformColor } from "@/lib/platforms";
+import { CONTEST_PLATFORMS, PLATFORM_META, platformColor } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -25,7 +25,7 @@ export function FollowBar() {
         Auto-remind me about <span className="font-semibold text-cp-text">every</span> contest on:
       </span>
       <div className="flex flex-wrap gap-2">
-        {ACTIVE_PLATFORMS.map((p) => {
+        {CONTEST_PLATFORMS.map((p) => {
           const on = subscribed.has(p);
           const color = platformColor(p);
           const pending = toggle.isPending && toggle.variables?.platform === p;

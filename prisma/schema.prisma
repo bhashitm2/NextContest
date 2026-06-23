@@ -20,6 +20,9 @@ enum Platform {
   ATCODER
   CODECHEF
   HACKERRANK // reserved for a later release
+  // v1.1 additions (append-only — never reorder a Postgres enum)
+  GEEKSFORGEEKS
+  CODE360
 }
 
 enum ContestStatus {

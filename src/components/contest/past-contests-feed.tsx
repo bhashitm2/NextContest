@@ -7,7 +7,7 @@ import { FilterPill } from "@/components/contest/filter-pill";
 import { PastContestCard } from "@/components/contest/past-contest-card";
 import { PlatformLogo } from "@/components/platform-logo";
 import type { Contest, Platform } from "@/generated/prisma/client";
-import { ACTIVE_PLATFORMS, PLATFORM_META, platformColor } from "@/lib/platforms";
+import { CONTEST_PLATFORMS, PLATFORM_META, platformColor } from "@/lib/platforms";
 
 const GRID = "grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3";
 
@@ -17,7 +17,7 @@ export function PastContestsFeed({ contests }: { contests: Contest[] }) {
     setSelected((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]));
 
   const counts = Object.fromEntries(
-    ACTIVE_PLATFORMS.map((p) => [p, contests.filter((c) => c.platform === p).length]),
+    CONTEST_PLATFORMS.map((p) => [p, contests.filter((c) => c.platform === p).length]),
   ) as Record<Platform, number>;
 
   const shown = selected.length
@@ -33,7 +33,7 @@ export function PastContestsFeed({ contests }: { contests: Contest[] }) {
       {/* filter pills */}
       <div className="flex flex-wrap items-center gap-[9px]">
         <FilterPill label="All" active={selected.length === 0} onClick={() => setSelected([])} />
-        {ACTIVE_PLATFORMS.map((p) => (
+        {CONTEST_PLATFORMS.map((p) => (
           <FilterPill
             key={p}
             label={PLATFORM_META[p].label}
