@@ -91,6 +91,9 @@ export const VERIFICATION_FIELD: Record<string, string> = {
   LEETCODE: "README / Summary (Edit Profile)",
   ATCODER: "Affiliation (Settings → General Settings)",
   CODECHEF: "Name (Edit Profile)",
+  GEEKSFORGEEKS: "Name field (your profile → Edit Profile)",
+  CODE360: "Name field (your profile → Edit Profile)",
+  HACKERRANK: "First name field (your profile → click the ✎ pencil to edit)",
 };
 
 /** Public profile/account URL for a handle, per platform. */
@@ -105,6 +108,12 @@ export function platformProfileUrl(platform: string, handle: string): string {
       return `https://atcoder.jp/users/${h}`;
     case "CODECHEF":
       return `https://www.codechef.com/users/${h}`;
+    case "GEEKSFORGEEKS":
+      return `https://www.geeksforgeeks.org/profile/${h}`;
+    case "CODE360":
+      return `https://www.naukri.com/code360/profile/${h}`;
+    case "HACKERRANK":
+      return `https://www.hackerrank.com/profile/${h}`;
     default:
       return "#";
   }

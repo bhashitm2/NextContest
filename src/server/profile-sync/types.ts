@@ -73,7 +73,7 @@ export const VERIFICATION_FIELD: Record<ProfilePlatform, string> = {
   LEETCODE: "README / Summary (Edit Profile)",
   ATCODER: "Affiliation (Settings → General Settings)",
   CODECHEF: "Name (Edit Profile)",
-  GEEKSFORGEEKS: "Name (Edit Profile)",
-  CODE360: "Name (Edit Profile)",
-  HACKERRANK: "Name (Settings → Profile)",
+  GEEKSFORGEEKS: "Name field (your profile → Edit Profile)",
+  CODE360: "Name field (your profile → Edit Profile)",
+  HACKERRANK: "First name field (your profile → click the ✎ pencil to edit)",
 };

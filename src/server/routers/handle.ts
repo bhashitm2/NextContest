@@ -42,9 +42,15 @@ const PUBLIC_HANDLE_SELECT = {
   lastSynced: true,
 } as const;
 
-/** A short, user-pasteable verification token, e.g. "nextcontest-a1b2c3". */
+/** A short, user-pasteable verification token — random letters only, e.g.
+ * "aXbQmRtKpL". Length keeps it unlikely to collide with normal profile text
+ * (we scan a profile field for it via .includes). */
 function newVerificationCode(): string {
-  return `nextcontest-${randomBytes(4).toString("hex")}`;
+  const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const bytes = randomBytes(10);
+  let out = "";
+  for (const b of bytes) out += alphabet[b % alphabet.length];
+  return out;
 }
 
 /** Map a thrown fetch/validate error to a clean client-facing message. */

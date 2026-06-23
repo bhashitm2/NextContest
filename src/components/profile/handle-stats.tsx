@@ -34,25 +34,40 @@ export function HandleStats({ handle }: { handle: HandleView }) {
   const extra = parseStats(handle.stats);
   const recent = extra.recentSolved ?? [];
 
+  // Only show a tile when the platform actually exposes that metric — profile-only
+  // platforms (GeeksforGeeks/Code360/HackerRank) have no rating or contest count,
+  // so those tiles are dropped rather than shown as empty "N/A".
+  const tiles = [
+    handle.rating != null ? (
+      <Stat
+        key="rating"
+        label="Rating"
+        value={String(handle.rating)}
+        sub={handle.maxRating != null ? `max ${handle.maxRating}` : undefined}
+      />
+    ) : null,
+    <Stat
+      key="solved"
+      label="Solved"
+      value={handle.problemsSolved != null ? handle.problemsSolved.toLocaleString() : "N/A"}
+    />,
+    <Stat
+      key="rank"
+      label="Rank"
+      value={handle.rank ?? "N/A"}
+      valueColor={rankColor(handle.platform, handle.rank)}
+    />,
+    extra.contests != null ? (
+      <Stat key="contests" label="Contests" value={String(extra.contests)} />
+    ) : null,
+  ].filter(Boolean);
+
+  const colsClass =
+    tiles.length >= 4 ? "sm:grid-cols-4" : tiles.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Stat
-          label="Rating"
-          value={handle.rating != null ? String(handle.rating) : "—"}
-          sub={handle.maxRating != null ? `max ${handle.maxRating}` : undefined}
-        />
-        <Stat
-          label="Solved"
-          value={handle.problemsSolved != null ? handle.problemsSolved.toLocaleString() : "—"}
-        />
-        <Stat
-          label="Rank"
-          value={handle.rank ?? "—"}
-          valueColor={rankColor(handle.platform, handle.rank)}
-        />
-        <Stat label="Contests" value={extra.contests != null ? String(extra.contests) : "—"} />
-      </div>
+      <div className={`grid grid-cols-2 gap-2.5 ${colsClass}`}>{tiles}</div>
 
       {extra.difficulty ? <DifficultyBar data={extra.difficulty} /> : null}
 
