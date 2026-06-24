@@ -11,8 +11,43 @@ const ALLOWED_HOST_SUFFIXES = [
   ".gravatar.com",
 ];
 
+const MAX_BYTES = 5 * 1024 * 1024; // cap proxied images at 5 MB
+
 function isAllowed(host: string): boolean {
   return ALLOWED_HOST_SUFFIXES.some((suffix) => host === suffix.slice(1) || host.endsWith(suffix));
+}
+
+function allowedHttps(u: URL): boolean {
+  return u.protocol === "https:" && isAllowed(u.hostname);
+}
+
+/** Fetch following redirects MANUALLY, re-validating every hop's host against the
+ * allowlist — so an allowlisted CDN can't redirect us to an internal/untrusted
+ * host (SSRF defense). Returns the final non-redirect response, or null. */
+async function fetchValidated(start: URL): Promise<Response | null> {
+  let url = start;
+  for (let hop = 0; hop < 4; hop++) {
+    const res = await fetch(url, {
+      headers: { Accept: "image/*", "User-Agent": "NextContest-avatar-proxy" },
+      redirect: "manual",
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get("location");
+      if (!loc) return null;
+      let next: URL;
+      try {
+        next = new URL(loc, url); // resolve relative redirects
+      } catch {
+        return null;
+      }
+      if (!allowedHttps(next)) return null;
+      url = next;
+      continue;
+    }
+    return res;
+  }
+  return null; // too many redirects
 }
 
 export async function GET(request: Request): Promise<Response> {
@@ -25,20 +60,20 @@ export async function GET(request: Request): Promise<Response> {
   } catch {
     return new Response("bad url", { status: 400 });
   }
-  if (target.protocol !== "https:" || !isAllowed(target.hostname)) {
+  if (!allowedHttps(target)) {
     return new Response("host not allowed", { status: 400 });
   }
 
-  let upstream: Response;
+  let upstream: Response | null;
   try {
-    upstream = await fetch(target, {
-      headers: { Accept: "image/*", "User-Agent": "NextContest-avatar-proxy" },
-      signal: AbortSignal.timeout(10_000),
-    });
+    upstream = await fetchValidated(target);
   } catch {
     return new Response("fetch failed", { status: 502 });
   }
-  if (!upstream.ok) return new Response("upstream error", { status: 502 });
+  if (!upstream || !upstream.ok) return new Response("upstream error", { status: 502 });
+
+  const declaredLength = Number(upstream.headers.get("content-length") ?? 0);
+  if (declaredLength > MAX_BYTES) return new Response("too large", { status: 413 });
 
   const contentType = upstream.headers.get("content-type") ?? "";
   if (!contentType.startsWith("image/")) {

@@ -162,13 +162,10 @@ export function FriendsManager({
                 image={f.image}
                 right={
                   <>
-                    <span className="mr-1 hidden font-mono text-[12px] text-cp-dim sm:inline">
-                      {f.totalSolved.toLocaleString()} solved
-                    </span>
-                    <Button size="sm" render={<Link href={`/compare/${f.username}`} />}>
+                    <Button size="sm" nativeButton={false} render={<Link href={`/compare/${f.username}`} />}>
                       <Swords /> Compare
                     </Button>
-                    <Button size="sm" variant="outline" render={<Link href={`/u/${f.username}`} />}>
+                    <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`/u/${f.username}`} />}>
                       View
                     </Button>
                     <Button

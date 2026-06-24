@@ -21,14 +21,40 @@ export type ReminderEmailOpts = {
 
 const ACCENT = "#4f46e5";
 
+/** Escape text for safe interpolation into HTML (body text or attribute values).
+ * Contest titles/URLs come from external platforms, so they're treated as untrusted. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Only allow http(s) links in the email; anything else collapses to "#" so a
+ * malformed/hostile URL can't smuggle a javascript: or broken-attribute href. */
+function safeHref(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.protocol === "http:" || u.protocol === "https:") return escapeHtml(u.toString());
+  } catch {
+    // fall through
+  }
+  return "#";
+}
+
 /** Build the reminder email's subject + HTML (pure — no sending, so testable). */
 export function buildReminderEmail(opts: ReminderEmailOpts): { subject: string; html: string } {
   const when = opts.kind === "24h" ? "in 24 hours" : "in 1 hour";
   const platformLabel = PLATFORM_META[opts.platform].label;
   const startsAt = formatStartInZone(opts.startTime, opts.timezone ?? "UTC");
   const duration = formatDuration(opts.durationSeconds);
+  const title = escapeHtml(opts.contestTitle);
+  const href = safeHref(opts.contestUrl);
 
-  const subject = `⏰ ${platformLabel}: ${opts.contestTitle} starts ${when}`;
+  // Subject is a plain-text header — strip CR/LF so a crafted title can't inject headers.
+  const subject = `⏰ ${platformLabel}: ${opts.contestTitle.replace(/[\r\n]+/g, " ")} starts ${when}`;
 
   const html = `
   <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;color:#111">
@@ -38,12 +64,12 @@ export function buildReminderEmail(opts: ReminderEmailOpts): { subject: string; 
     </h1>
     <div style="border:1px solid #e5e7eb;border-radius:12px;padding:18px;margin:12px 0">
       <p style="display:inline-block;font-size:12px;font-weight:600;color:${ACCENT};background:#eef2ff;border-radius:999px;padding:3px 10px;margin:0 0 10px">${platformLabel}</p>
-      <p style="font-weight:700;font-size:17px;margin:0 0 12px">${opts.contestTitle}</p>
+      <p style="font-weight:700;font-size:17px;margin:0 0 12px">${title}</p>
       <table style="font-size:14px;color:#444;margin:0 0 14px;border-collapse:collapse">
         <tr><td style="padding:2px 0;color:#888">Starts</td><td style="padding:2px 0 2px 14px;font-weight:600;color:#111">${startsAt}</td></tr>
         <tr><td style="padding:2px 0;color:#888">Duration</td><td style="padding:2px 0 2px 14px;color:#111">${duration}</td></tr>
       </table>
-      <a href="${opts.contestUrl}" style="display:inline-block;background:${ACCENT};color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600">Open contest →</a>
+      <a href="${href}" style="display:inline-block;background:${ACCENT};color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600">Open contest →</a>
     </div>
     <p style="font-size:12px;color:#999;margin-top:16px;line-height:1.5">
       Time shown in your saved timezone. You're getting this because you bookmarked this contest on

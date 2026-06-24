@@ -153,9 +153,9 @@ export function HandleCard({ handle }: { handle: HandleRow }) {
                   Verify
                 </Button>
                 <Button
-                  type="button"
                   variant="outline"
                   size="sm"
+                  nativeButton={false}
                   render={
                     <a href={platformProfileUrl(handle.platform, handle.handle)} target="_blank" rel="noreferrer" />
                   }
