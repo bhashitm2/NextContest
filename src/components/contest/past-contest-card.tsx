@@ -1,10 +1,13 @@
-import { ArrowUpRight, CalendarCheck, Swords } from "lucide-react";
+import { ArrowUpRight, CalendarCheck, LineChart, Swords } from "lucide-react";
 import Link from "next/link";
 
 import { LocalDate } from "@/components/local-date";
 import { PlatformLogo } from "@/components/platform-logo";
 import type { Contest } from "@/generated/prisma/client";
 import { PLATFORM_META, platformColor } from "@/lib/platforms";
+
+/** Platforms with a rating predictor (see server/predictions). */
+const PREDICTABLE: Contest["platform"][] = ["CODEFORCES", "LEETCODE"];
 
 /** A finished-contest card: like ContestCard but with an "Ended" timestamp and a
  * "Compare with friend" CTA (the target page handles the sign-in / friend gate). */
@@ -67,7 +70,7 @@ export function PastContestCard({ contest }: { contest: Contest }) {
         Ended <LocalDate date={contest.endTime} />
       </div>
 
-      <div className="relative mt-auto p-[17px] pt-[15px]">
+      <div className="relative mt-auto flex flex-col gap-2 p-[17px] pt-[15px]">
         <Link
           href={`/contests/${contest.id}/compare`}
           className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-[10px] bg-cp-accent px-3.5 text-[13px] font-semibold text-cp-accent-ink transition-opacity hover:opacity-90"
@@ -75,6 +78,15 @@ export function PastContestCard({ contest }: { contest: Contest }) {
           <Swords className="size-3.5" />
           Compare with friend
         </Link>
+        {PREDICTABLE.includes(contest.platform) ? (
+          <Link
+            href={`/contests/${contest.id}/predict`}
+            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-[10px] border border-cp-line-strong bg-cp-surface px-3.5 text-[13px] font-semibold text-cp-text transition-colors hover:border-cp-accent"
+          >
+            <LineChart className="size-3.5" />
+            Predict my rating
+          </Link>
+        ) : null}
       </div>
     </div>
   );

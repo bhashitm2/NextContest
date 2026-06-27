@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { auth } from "@/auth";
+import { ForecastCard } from "@/components/predict/forecast-card";
 import { ProfileBody } from "@/components/profile/profile-body";
 import { SignInPrompt } from "@/components/profile/sign-in-prompt";
 import { avatarSrc } from "@/lib/avatar";
@@ -106,7 +107,10 @@ export default async function ProfilePage() {
           </Link>
         </div>
       ) : (
-        <ProfileBody handles={handles} />
+        <div className="space-y-6">
+          <ProfileBody handles={handles} />
+          <ForecastCard />
+        </div>
       )}
     </main>
   );

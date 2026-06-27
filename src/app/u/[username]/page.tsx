@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ForecastCard } from "@/components/predict/forecast-card";
 import { ProfileBody } from "@/components/profile/profile-body";
 import { avatarSrc } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
@@ -99,7 +100,10 @@ export default async function PublicProfilePage({
           No verified handles yet.
         </div>
       ) : (
-        <ProfileBody handles={profile.handles} />
+        <div className="space-y-6">
+          <ProfileBody handles={profile.handles} />
+          <ForecastCard username={profile.username!} />
+        </div>
       )}
 
       <footer className="mt-10 text-center text-[13px] text-cp-dim">

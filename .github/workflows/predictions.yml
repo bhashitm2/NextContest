@@ -1,0 +1,26 @@
+# Free production scheduler for the rating predictor.
+# Hits the secret-protected /api/cron/predictions endpoint on a schedule, which
+# pre-warms Codeforces rating predictions for connected users during the window
+# between a contest ending and ratings being applied.
+# Requires two repo secrets: APP_URL (deployed base URL) and CRON_SECRET.
+name: Refresh rating predictions
+
+on:
+  schedule:
+    - cron: "*/20 * * * *" # every 20 minutes
+  workflow_dispatch: {} # allow manual runs
+
+jobs:
+  predictions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger prediction refresh
+        run: |
+          code=$(curl -sSL -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/predictions")
+          echo "HTTP $code"
+          cat /tmp/body.json
+          if [ "$code" != "200" ]; then
+            exit 1
+          fi

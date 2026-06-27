@@ -263,6 +263,47 @@ model ContestResult {
   @@index([platform, externalId])
 }
 
+// Rating Predictor (Codeforces + LeetCode). Caches one handle's PREDICTED rating
+// change on a single contest, computed in the window between the contest ending
+// and the platform officially applying ratings (the Carrot / LeetCode-predictor
+// use case). Keyed by handle (not userId) so it's reusable across the personal
+// page and the public lookup tool, and survives handle changes — mirroring
+// ContestResult. A whole CF contest is computed at once (rating change depends on
+// everyone's seed), so many rows share one (platform, externalId).
+//   state: "live"  → predicted from current ratings, not yet official
+//          "final" → contest is now officially rated; delta is the real one
+//          "pending" / "unavailable" are transient and not normally persisted.
+model RatingPrediction {
+  id             String   @id @default(cuid())
+  platform       Platform
+  externalId     String // matches Contest.externalId
+  handle         String // lowercased platform handle
+  rank           Int?
+  predictedDelta Int?
+  currentRating  Int? // rating going IN to the contest
+  performance    Int? // CF: the rating at which the delta would be zero
+  state          String   @default("live")
+  modelVersion   String   @default("v1")
+  computedAt     DateTime @default(now())
+
+  @@unique([platform, externalId, handle])
+  @@index([platform, externalId])
+}
+
+// One row per contest we've run the predictor on, so the cron can skip recompute
+// and we don't re-fetch a 30k-row standings + the multi-MB rated-user list on
+// every view. `rated` flips true once the platform has officially rated it.
+model PredictionRun {
+  platform         Platform
+  externalId       String
+  participantCount Int?
+  rated            Boolean  @default(false)
+  ok               Boolean  @default(true)
+  computedAt       DateTime @default(now())
+
+  @@id([platform, externalId])
+}
+
 // Tracks per-source pipeline health so the UI can show a "stale data" banner
 // and the founder can be alerted on scraper failure.
 model SyncState {

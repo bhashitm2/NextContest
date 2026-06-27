@@ -49,6 +49,12 @@ export async function SiteHeader() {
           >
             Contests
           </Link>
+          <Link
+            href="/predict"
+            className="hidden rounded-lg px-3 py-2 text-sm text-cp-dim transition-colors hover:text-cp-text sm:block"
+          >
+            Ratings
+          </Link>
           {user ? (
             <>
               <Link
