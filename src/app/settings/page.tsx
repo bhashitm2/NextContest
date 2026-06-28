@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
-import { ProfileManager } from "@/components/profile/profile-manager";
-import { SignInPrompt } from "@/components/profile/sign-in-prompt";
-import { AccentPicker } from "@/components/theme/accent-picker";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { PageHeader } from "@/components/page-header";
+import { SettingsShell } from "@/components/settings/settings-shell";
 
 export const metadata: Metadata = {
   title: "Settings — NextContest",
@@ -14,51 +14,26 @@ export const metadata: Metadata = {
 export default async function SettingsPage() {
   const session = await auth();
 
-  if (!session?.user) {
-    return (
-      <SignInPrompt
-        redirectTo="/settings"
-        title="Build your CP profile"
-        subtitle="Sign in to connect your handles and choose a public profile username."
-      />
-    );
-  }
+  // Auth-gated: a logged-out visitor shouldn't be able to land here at all.
+  if (!session?.user) notFound();
 
   return (
-    <main className="mx-auto w-full max-w-[840px] px-4 py-10 sm:px-[22px]">
-      <header className="mb-6">
-        <h1 className="font-display text-[clamp(1.7rem,3.4vw,2.4rem)] font-bold tracking-[-0.02em]">
-          Settings
-        </h1>
-        <p className="mt-1 text-[15px] text-cp-dim">
-          Connect &amp; verify your handles and choose your public username. Your verified profiles
-          appear on your{" "}
-          <a href="/profile" className="text-cp-accent hover:underline">
-            Profile
-          </a>
-          .
-        </p>
-      </header>
+    <main className="mx-auto w-full max-w-[980px] px-4 py-10 sm:px-[22px]">
+      <PageHeader
+        title="Settings"
+        subtitle="Manage your public profile, connect your coding handles, and set the look of the app."
+        action={
+          <Link
+            href="/profile"
+            className="inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-cp-line bg-cp-surface px-3.5 text-[13px] font-semibold text-cp-dim transition-colors hover:text-cp-text"
+          >
+            View your profile
+            <span aria-hidden>→</span>
+          </Link>
+        }
+      />
 
-      <ProfileManager />
-
-      <section className="mt-6 rounded-[14px] border border-cp-line bg-cp-surface p-4 sm:p-5">
-        <h2 className="font-display text-[16px] font-bold">Appearance</h2>
-        <div className="mt-3 flex items-center justify-between gap-4">
-          <div>
-            <div className="text-[14px] font-medium text-cp-text">Theme</div>
-            <div className="text-[12px] text-cp-dim">Switch between dark and light.</div>
-          </div>
-          <ThemeToggle />
-        </div>
-        <div className="mt-4 flex items-center justify-between gap-4 border-t border-cp-line pt-4">
-          <div>
-            <div className="text-[14px] font-medium text-cp-text">Accent</div>
-            <div className="text-[12px] text-cp-dim">Pick your highlight color.</div>
-          </div>
-          <AccentPicker />
-        </div>
-      </section>
+      <SettingsShell />
     </main>
   );
 }

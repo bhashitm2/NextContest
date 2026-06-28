@@ -6,7 +6,6 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { LocalDate } from "@/components/local-date";
 import { PredictionCard } from "@/components/predict/prediction-card";
-import { SignInPrompt } from "@/components/profile/sign-in-prompt";
 import { prisma } from "@/lib/db";
 import { PLATFORM_META } from "@/lib/platforms";
 import { createCaller } from "@/server/routers/_app";
@@ -35,15 +34,8 @@ export default async function ContestPredictPage({
   const { contestId } = await params;
   const session = await auth();
 
-  if (!session?.user?.id) {
-    return (
-      <SignInPrompt
-        redirectTo={`/contests/${contestId}/predict`}
-        title="Predict your rating"
-        subtitle="Sign in to see your predicted rating change for this contest before it's official."
-      />
-    );
-  }
+  // Auth-gated: a logged-out visitor shouldn't be able to land here at all.
+  if (!session?.user?.id) notFound();
 
   const caller = createCaller({ db: prisma, userId: session.user.id, headers: new Headers() });
   const contest = await caller.contest.getById({ id: contestId });
@@ -58,7 +50,7 @@ export default async function ContestPredictPage({
           Rating prediction
         </h1>
         <Link
-          href="/predict"
+          href="/ratings"
           className="inline-flex shrink-0 items-center gap-1.5 text-[13px] text-cp-dim transition-colors hover:text-cp-text"
         >
           <LineChart className="size-3.5" /> Look up any handle

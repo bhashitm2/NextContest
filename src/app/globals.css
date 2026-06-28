@@ -202,3 +202,59 @@
 .animate-rise {
   animation: riseIn 0.5s ease both;
 }
+
+/* Tab-content crossfade: incoming Upcoming/Past feed fades + lifts gently into place. */
+@keyframes tabIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-tab-in {
+  animation: tabIn 0.32s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-tab-in {
+    animation: none;
+  }
+}
+
+/* Gamified 404 */
+@keyframes float404 {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+@keyframes bugWiggle {
+  0%,
+  100% {
+    transform: rotate(-9deg);
+  }
+  50% {
+    transform: rotate(9deg);
+  }
+}
+@keyframes bugPop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nf-float,
+  .nf-bug {
+    animation: none !important;
+  }
+}

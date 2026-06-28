@@ -6,7 +6,6 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { ContestVsView } from "@/components/contest/contest-vs-view";
 import { LocalDate } from "@/components/local-date";
-import { SignInPrompt } from "@/components/profile/sign-in-prompt";
 import { avatarSrc } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 import { PLATFORM_META } from "@/lib/platforms";
@@ -79,15 +78,8 @@ export default async function ContestComparePage({
   const { friend } = await searchParams;
   const session = await auth();
 
-  if (!session?.user?.id) {
-    return (
-      <SignInPrompt
-        redirectTo={`/contests/${contestId}/compare`}
-        title="Compare on a contest"
-        subtitle="Sign in to see how you and a friend did on this round, head-to-head."
-      />
-    );
-  }
+  // Auth-gated: a logged-out visitor shouldn't be able to land here at all.
+  if (!session?.user?.id) notFound();
 
   const caller = createCaller({ db: prisma, userId: session.user.id, headers: new Headers() });
   const contest = await caller.contest.getById({ id: contestId });

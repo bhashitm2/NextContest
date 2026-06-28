@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { auth } from "@/auth";
 import { PastContestsFeed } from "@/components/contest/past-contests-feed";
@@ -24,25 +23,7 @@ export default async function PastContestsPage() {
   const contests = await caller.contest.finished({ limit: 200 });
 
   return (
-    <main className="mx-auto w-full max-w-[1240px] px-4 py-10 sm:px-[22px]">
-      <header className="mb-6">
-        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="font-display text-[clamp(1.7rem,3.4vw,2.4rem)] font-bold tracking-[-0.02em]">
-            Past Contests
-          </h1>
-          <Link
-            href="/contests"
-            className="shrink-0 text-[13px] text-cp-dim transition-colors hover:text-cp-text"
-          >
-            ← Upcoming
-          </Link>
-        </div>
-        <p className="text-[15px] text-cp-dim">
-          Recently finished rounds. Pick one to compare your rank &amp; rating change head-to-head
-          with a friend who also competed.
-        </p>
-      </header>
-
+    <div className="animate-tab-in">
       {contests.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-cp-line-strong py-20 text-center text-cp-dim">
           No finished contests yet — check back after the next round wraps up.
@@ -50,6 +31,6 @@ export default async function PastContestsPage() {
       ) : (
         <PastContestsFeed contests={contests} />
       )}
-    </main>
+    </div>
   );
 }

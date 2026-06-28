@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { RequestsView } from "@/components/friends/requests-view";
-import { SignInPrompt } from "@/components/profile/sign-in-prompt";
 import { prisma } from "@/lib/db";
 import { createCaller } from "@/server/routers/_app";
 
@@ -16,15 +16,8 @@ export const metadata: Metadata = {
 export default async function RequestsPage() {
   const session = await auth();
 
-  if (!session?.user?.id) {
-    return (
-      <SignInPrompt
-        redirectTo="/friends/requests"
-        title="Friend requests"
-        subtitle="Sign in to see who wants to connect."
-      />
-    );
-  }
+  // Auth-gated: a logged-out visitor shouldn't be able to land here at all.
+  if (!session?.user?.id) notFound();
 
   // Server-prefetch so the lists paint on first render (no client round-trip).
   const caller = createCaller({ db: prisma, userId: session.user.id, headers: new Headers() });

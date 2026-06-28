@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { ForecastCard } from "@/components/predict/forecast-card";
 import { ProfileBody } from "@/components/profile/profile-body";
-import { SignInPrompt } from "@/components/profile/sign-in-prompt";
 import { avatarSrc } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 
@@ -29,15 +29,8 @@ const HANDLE_SELECT = {
 export default async function ProfilePage() {
   const session = await auth();
 
-  if (!session?.user) {
-    return (
-      <SignInPrompt
-        redirectTo="/profile"
-        title="Your CP profile"
-        subtitle="Sign in to see your verified coding profiles and cross-platform stats."
-      />
-    );
-  }
+  // Auth-gated: a logged-out visitor shouldn't be able to land here at all.
+  if (!session?.user) notFound();
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -92,18 +85,26 @@ export default async function ProfilePage() {
           href="/settings"
           className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-cp-line bg-cp-surface px-3.5 text-[13px] font-semibold text-cp-dim transition-colors hover:text-cp-text"
         >
-          Manage in Settings
+          Manage handles &amp; username
+          <span aria-hidden>→</span>
         </Link>
       </header>
 
       {handles.length === 0 ? (
-        <div className="rounded-[14px] border border-dashed border-cp-line bg-cp-surface p-8 text-center">
-          <p className="text-cp-dim">No verified coding profiles yet.</p>
+        <div className="rounded-[16px] border border-dashed border-cp-line-strong bg-cp-surface p-10 text-center">
+          <h2 className="font-display text-lg font-semibold text-cp-text">
+            Connect your first handle
+          </h2>
+          <p className="mx-auto mt-1.5 max-w-sm text-sm text-cp-dim">
+            Link your Codeforces, LeetCode, AtCoder, CodeChef and more in Settings to see your
+            cross-platform stats and rating forecast here.
+          </p>
           <Link
             href="/settings"
-            className="mt-3 inline-flex h-10 items-center rounded-[10px] bg-cp-accent px-4 text-sm font-semibold text-cp-accent-ink"
+            className="mt-4 inline-flex h-10 items-center gap-1.5 rounded-[10px] bg-cp-accent px-4 text-sm font-semibold text-cp-accent-ink"
           >
-            Connect a handle in Settings
+            Manage handles &amp; username
+            <span aria-hidden>→</span>
           </Link>
         </div>
       ) : (

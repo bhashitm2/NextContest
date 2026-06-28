@@ -1,6 +1,8 @@
 import { ArrowRight, Bell, CalendarDays, Layers } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
+import { auth } from "@/auth";
 import { LiveBoard } from "@/components/landing/live-board";
 import { ContestStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
@@ -25,6 +27,10 @@ const FEATURES = [
 ];
 
 export default async function Home() {
+  // Signed-in users skip the marketing hero and land straight on the live feed.
+  const session = await auth();
+  if (session?.user) redirect("/contests");
+
   const upcoming = await prisma.contest.findMany({
     where: { status: ContestStatus.UPCOMING, startTime: { gte: new Date() } },
     orderBy: { startTime: "asc" },

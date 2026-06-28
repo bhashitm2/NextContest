@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { FriendsManager } from "@/components/friends/friends-manager";
-import { SignInPrompt } from "@/components/profile/sign-in-prompt";
+import { RequestsButton } from "@/components/friends/requests-button";
+import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/db";
 import { createCaller } from "@/server/routers/_app";
 
@@ -16,15 +18,8 @@ export const metadata: Metadata = {
 export default async function FriendsPage() {
   const session = await auth();
 
-  if (!session?.user?.id) {
-    return (
-      <SignInPrompt
-        redirectTo="/friends"
-        title="Find your CP friends"
-        subtitle="Sign in to add friends by CodeTag and compare your coding profiles head-to-head."
-      />
-    );
-  }
+  // Auth-gated: a logged-out visitor shouldn't be able to land here at all.
+  if (!session?.user?.id) notFound();
 
   // Server-prefetch the friends list + pending count so they paint instantly.
   const caller = createCaller({ db: prisma, userId: session.user.id, headers: new Headers() });
@@ -36,20 +31,13 @@ export default async function FriendsPage() {
 
   return (
     <main className="mx-auto w-full max-w-[720px] px-4 py-10 sm:px-[22px]">
-      <header className="mb-6">
-        <h1 className="font-display text-[clamp(1.7rem,3.4vw,2.4rem)] font-bold tracking-[-0.02em]">
-          Friends
-        </h1>
-        <p className="mt-1 text-[15px] text-cp-dim">
-          Add friends by CodeTag, then compare your profiles head-to-head.
-        </p>
-      </header>
-
-      <FriendsManager
-        myUsername={user?.username ?? null}
-        initialFriends={friends}
-        initialPendingCount={pendingCount}
+      <PageHeader
+        title="Friends"
+        subtitle="Add friends by CodeTag, then compare your profiles head-to-head."
+        action={<RequestsButton initialCount={pendingCount} />}
       />
+
+      <FriendsManager myUsername={user?.username ?? null} initialFriends={friends} />
     </main>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronRight, Search, Swords, UserPlus, UserX } from "lucide-react";
+import { Check, Search, Swords, UserPlus, UserX } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -12,11 +12,9 @@ import { FriendRow, type RouterOutputs } from "./friend-row";
 export function FriendsManager({
   myUsername,
   initialFriends,
-  initialPendingCount,
 }: {
   myUsername: string | null;
   initialFriends: RouterOutputs["friend"]["list"];
-  initialPendingCount: number;
 }) {
   const utils = api.useUtils();
   const [query, setQuery] = useState("");
@@ -32,7 +30,6 @@ export function FriendsManager({
     { enabled: debounced.length >= 1 },
   );
   const friends = api.friend.list.useQuery(undefined, { initialData: initialFriends });
-  const pending = api.friend.pendingCount.useQuery(undefined, { initialData: initialPendingCount });
 
   const invalidate = () => {
     utils.friend.search.invalidate();
@@ -45,28 +42,10 @@ export function FriendsManager({
   const remove = api.friend.remove.useMutation({ onSuccess: invalidate });
   const busy = request.isPending || respond.isPending || remove.isPending;
 
-  const pendingCount = pending.data ?? 0;
   const friendList = friends.data ?? [];
 
   return (
     <div className="space-y-6">
-      {/* Requests entry */}
-      <Link
-        href="/friends/requests"
-        className="flex items-center justify-between rounded-[14px] border border-cp-line bg-cp-surface px-4 py-3.5 transition-colors hover:border-cp-accent"
-      >
-        <span className="flex items-center gap-2.5">
-          <UserPlus className="size-4 text-cp-accent" />
-          <span className="text-[14px] font-semibold text-cp-text">Requests</span>
-          {pendingCount > 0 ? (
-            <span className="grid min-w-[18px] place-items-center rounded-full bg-cp-accent px-1.5 text-[11px] font-bold leading-5 text-cp-accent-ink">
-              {pendingCount}
-            </span>
-          ) : null}
-        </span>
-        <ChevronRight className="size-4 text-cp-dim" />
-      </Link>
-
       {/* CodeTag */}
       <div className="rounded-[14px] border border-cp-line bg-cp-surface p-4 sm:p-5">
         <h2 className="font-display text-[16px] font-bold">Your CodeTag</h2>

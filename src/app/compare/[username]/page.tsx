@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { CompareStage } from "@/components/compare/compare-stage";
-import { SignInPrompt } from "@/components/profile/sign-in-prompt";
 import { loadComparison } from "@/server/compare/load";
 
 export const dynamic = "force-dynamic";
@@ -21,15 +20,8 @@ export default async function ComparePage({
   const { username } = await params;
   const session = await auth();
 
-  if (!session?.user?.id) {
-    return (
-      <SignInPrompt
-        redirectTo={`/compare/${username}`}
-        title="Compare profiles head-to-head"
-        subtitle="Sign in to see who wins on ratings, problems solved, and topics."
-      />
-    );
-  }
+  // Auth-gated: a logged-out visitor shouldn't be able to land here at all.
+  if (!session?.user?.id) notFound();
 
   const outcome = await loadComparison(session.user.id, username);
 
