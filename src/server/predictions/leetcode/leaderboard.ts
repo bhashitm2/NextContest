@@ -11,37 +11,16 @@
  *   202 → contest crawled but predictions still computing (try again shortly)
  *   else / no URL / cold-start / timeout → unavailable (caller degrades gracefully)
  */
-
-/** One ranklist row, normalized for the UI. */
-export type LeaderboardRow = {
-  rank: number;
-  username: string;
-  userSlug: string;
-  dataRegion: string | null;
-  oldRating: number | null;
-  delta: number | null;
-  newRating: number | null;
-  score: number | null;
-  /** ISO timestamp the contestant finished (penalty time), if known. */
-  finishTime: string | null;
-};
-
-/** Discriminated result so the page can tell "still computing" from "broken". */
-export type LeaderboardResult =
-  | { status: "ok"; total: number; page: number; size: number; rows: LeaderboardRow[] }
-  | { status: "computing" }
-  | { status: "unavailable" };
+import type { LeaderboardResult, LeaderboardRow } from "../contest-results";
 
 type PredictionRecord = {
   rank?: number | null;
   username?: string | null;
   user_slug?: string | null;
-  data_region?: string | null;
   old_rating?: number | null;
   delta_rating?: number | null;
   new_rating?: number | null;
   score?: number | null;
-  finish_time?: string | null;
 };
 
 type PredictionPage = {
@@ -58,17 +37,33 @@ function round(n: number | null | undefined): number | null {
 }
 
 function toRow(rec: PredictionRecord): LeaderboardRow {
+  const slug = rec.user_slug ?? rec.username ?? "";
   return {
     rank: rec.rank ?? 0,
-    username: rec.username ?? rec.user_slug ?? "?",
-    userSlug: rec.user_slug ?? rec.username ?? "",
-    dataRegion: rec.data_region ?? null,
+    displayName: rec.username ?? rec.user_slug ?? "?",
+    profileUrl: `https://leetcode.com/u/${encodeURIComponent(slug)}/`,
     oldRating: round(rec.old_rating),
     delta: round(rec.delta_rating),
     newRating: round(rec.new_rating),
     score: rec.score ?? null,
-    finishTime: rec.finish_time ?? null,
   };
+}
+
+/** When the service crawled this contest's ranking (ISO, or null). Drives the
+ * UI's "snapshot from …" note, since LeetCode keeps purging flagged accounts
+ * after the crawl so ranks drift until the round is finally rated. */
+async function fetchCrawledAt(root: string, slug: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${root}/api/v1/contest/${encodeURIComponent(slug)}/status`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(25_000),
+    });
+    if (!res.ok) return null;
+    const s = (await res.json()) as { predicted_at?: string | null };
+    return s.predicted_at ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -83,16 +78,18 @@ export async function fetchLeetCodeLeaderboard(
   const base = process.env.LCCN_PREDICTOR_URL;
   if (!base) return { status: "unavailable" };
 
+  const root = base.replace(/\/$/, "");
   const url =
-    `${base.replace(/\/$/, "")}/api/v1/contest/${encodeURIComponent(slug)}/predict` +
+    `${root}/api/v1/contest/${encodeURIComponent(slug)}/predict` +
     `?page=${page}&size=${size}&sort=rank`;
 
   try {
     // Generous timeout: a free-tier host may cold-start (~1 min) on first hit.
-    const res = await fetch(url, {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(25_000),
-    });
+    // The snapshot time comes from /status in parallel (best-effort).
+    const [res, crawledAt] = await Promise.all([
+      fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(25_000) }),
+      fetchCrawledAt(root, slug),
+    ]);
     if (res.status === 202) return { status: "computing" };
     if (!res.ok) return { status: "unavailable" };
 
@@ -107,6 +104,10 @@ export async function fetchLeetCodeLeaderboard(
       total: data.total ?? data.records?.length ?? 0,
       page: data.page ?? page,
       size: data.size ?? size,
+      // lccn delta becomes the official number once LeetCode rates; we always
+      // present it as "predicted" since the service can't tell us which.
+      rated: false,
+      crawledAt,
       rows: (data.records ?? []).map(toRow),
     };
   } catch {

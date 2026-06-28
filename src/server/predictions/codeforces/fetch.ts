@@ -14,7 +14,7 @@ import { Contestant, predict } from "./predict";
 
 const API = "https://codeforces.com/api";
 
-type CfRow = {
+export type CfRow = {
   party: {
     members: { handle: string }[];
     participantType: string;
@@ -26,12 +26,23 @@ type CfRow = {
   points: number;
   penalty: number;
 };
+export type CfProblem = {
+  index: string;
+  name: string;
+  points?: number;
+  rating?: number;
+  tags?: string[];
+};
 type CfStandingsResponse = {
   status: string;
-  result?: { contest: { id: number; phase: string; name: string }; rows: CfRow[] };
+  result?: {
+    contest: { id: number; phase: string; name: string };
+    problems: CfProblem[];
+    rows: CfRow[];
+  };
 };
 
-type CfRatingChange = { handle: string; oldRating: number; newRating: number; rank: number };
+export type CfRatingChange = { handle: string; oldRating: number; newRating: number; rank: number };
 type CfRatingChangesResponse = { status: string; result?: CfRatingChange[] };
 
 type CfRatedUser = { handle: string; rating: number };
@@ -54,7 +65,7 @@ export type CfContestPredictions = {
 
 /** Only single-person CONTESTANT parties (no teams, ghosts, virtual/practice)
  * are rated and thus belong in the prediction. */
-function isRatedRow(row: CfRow): boolean {
+export function isRatedRow(row: CfRow): boolean {
   return (
     row.party.participantType === "CONTESTANT" &&
     row.party.members.length === 1 &&
@@ -62,7 +73,9 @@ function isRatedRow(row: CfRow): boolean {
   );
 }
 
-async function fetchStandings(contestId: string): Promise<CfStandingsResponse["result"] | null> {
+export async function fetchStandings(
+  contestId: string,
+): Promise<CfStandingsResponse["result"] | null> {
   // Codeforces only allows `contestId` here for non-gym contests/non-admins —
   // any extra param (showUnofficial, handles, from, count) → HTTP 400. The
   // default returns official participants only, which is what we want.
@@ -75,7 +88,7 @@ async function fetchStandings(contestId: string): Promise<CfStandingsResponse["r
 }
 
 /** Official deltas if the contest is rated, else null (treat as "predict"). */
-async function fetchRatingChanges(contestId: string): Promise<CfRatingChange[] | null> {
+export async function fetchRatingChanges(contestId: string): Promise<CfRatingChange[] | null> {
   try {
     const json = await fetchJson<CfRatingChangesResponse>(
       `${API}/contest.ratingChanges?contestId=${encodeURIComponent(contestId)}`,
@@ -93,7 +106,7 @@ async function fetchRatingChanges(contestId: string): Promise<CfRatingChange[] |
 let ratedCache: { at: number; map: Map<string, number> } | null = null;
 const RATED_TTL_MS = 30 * 60 * 1000;
 
-async function fetchRatedMap(): Promise<Map<string, number>> {
+export async function fetchRatedMap(): Promise<Map<string, number>> {
   if (ratedCache && Date.now() - ratedCache.at < RATED_TTL_MS) {
     return ratedCache.map;
   }

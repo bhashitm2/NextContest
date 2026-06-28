@@ -83,13 +83,12 @@ export default async function ContestDetailPage({
   const nowMs = new Date().getTime();
   const started = nowMs >= contest.startTime.getTime();
   const ended = nowMs >= contest.endTime.getTime();
-  const isLeetCode = contest.platform === "LEETCODE";
   const isPredictable = PREDICTABLE.includes(contest.platform);
 
-  // Questions (LeetCode only, once the contest has started). Server-rendered —
-  // it's a quick, static call; failures degrade to an omitted section.
+  // Questions (LeetCode + Codeforces, once the contest has started). Server-
+  // rendered; failures degrade to an omitted section.
   const questions =
-    isLeetCode && started ? await caller.rating.contestQuestions({ contestId }) : null;
+    isPredictable && started ? await caller.rating.contestQuestions({ contestId }) : null;
 
   return (
     <main className="mx-auto w-full max-w-[820px] px-4 py-10 sm:px-[22px]">
@@ -158,11 +157,10 @@ export default async function ContestDetailPage({
         </div>
       </header>
 
-      {!isLeetCode ? (
+      {!isPredictable ? (
         <Notice>
-          Questions &amp; full rankings with rating changes are available for LeetCode contests for
-          now. Use the actions above to compare with a friend
-          {isPredictable ? " or predict your own rating change" : ""}.
+          Questions &amp; full rankings with rating changes are available for LeetCode and Codeforces
+          contests for now. Use the action above to compare with a friend.
         </Notice>
       ) : (
         <div className="space-y-9">
@@ -175,13 +173,13 @@ export default async function ContestDetailPage({
                 note={`${questions.questions.length} problems`}
               />
               <ol className="overflow-hidden rounded-[12px] border border-cp-line bg-cp-surface">
-                {questions.questions.map((q, i) => (
+                {questions.questions.map((q) => (
                   <li
-                    key={q.slug}
+                    key={q.url}
                     className="flex items-center gap-3 border-b border-cp-line px-4 py-3 last:border-b-0"
                   >
                     <span className="grid size-7 shrink-0 place-items-center rounded-md bg-cp-bg font-mono text-[12px] font-semibold text-cp-dim">
-                      Q{i + 1}
+                      {q.label}
                     </span>
                     <a
                       href={q.url}
@@ -192,11 +190,24 @@ export default async function ContestDetailPage({
                       <span className="truncate">{q.title}</span>
                       <ArrowUpRight className="size-3.5 flex-none text-cp-faint" />
                     </a>
-                    {q.credit != null ? (
-                      <span className="ml-auto shrink-0 rounded-full border border-cp-line bg-cp-surface2 px-2.5 py-[3px] text-[11px] font-medium text-cp-dim">
-                        {q.credit} pts
-                      </span>
-                    ) : null}
+                    <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                      {q.rating != null ? (
+                        <span
+                          className="rounded-full px-2.5 py-[3px] text-[11px] font-semibold"
+                          style={{
+                            background: `color-mix(in srgb, ${color} 13%, transparent)`,
+                            color,
+                          }}
+                        >
+                          {q.rating}
+                        </span>
+                      ) : null}
+                      {q.points != null ? (
+                        <span className="rounded-full border border-cp-line bg-cp-surface2 px-2.5 py-[3px] text-[11px] font-medium text-cp-dim">
+                          {q.points} pts
+                        </span>
+                      ) : null}
+                    </span>
                   </li>
                 ))}
               </ol>
@@ -208,10 +219,9 @@ export default async function ContestDetailPage({
             <SectionHeading
               icon={<Trophy className="size-[18px] text-cp-accent" />}
               title="Ranking & rating change"
-              note="predicted · official once LeetCode rates"
             />
             {ended ? (
-              <ContestLeaderboard contestId={contest.id} />
+              <ContestLeaderboard contestId={contest.id} platformLabel={platformLabel} />
             ) : (
               <Notice>
                 The ranking and predicted rating changes appear once the contest ends

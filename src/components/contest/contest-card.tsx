@@ -61,9 +61,9 @@ export function ContestCard({
           ) : null}
         </div>
 
-        {contest.platform === "LEETCODE" ? (
-          // LeetCode → in-app results page (questions + ranking); the platform
-          // link demotes to a small external icon.
+        {contest.platform === "LEETCODE" || contest.platform === "CODEFORCES" ? (
+          // LeetCode / Codeforces → in-app results page (questions + ranking);
+          // the platform link demotes to a small external icon.
           <div className="flex items-start gap-1.5">
             <Link
               href={`/contests/${contest.id}`}
@@ -75,7 +75,7 @@ export function ContestCard({
               href={contest.url}
               target="_blank"
               rel="noopener noreferrer"
-              title="Open on LeetCode"
+              title={`Open on ${meta.label}`}
               className="mt-0.5 shrink-0"
             >
               <ArrowUpRight className="size-3.5 text-cp-faint transition-colors hover:text-cp-accent" />

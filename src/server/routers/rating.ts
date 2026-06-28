@@ -4,6 +4,10 @@ import { Platform } from "@/generated/prisma/client";
 import { forecastFromDeltas, type RatingForecast } from "@/lib/rating-forecast";
 import { normalizeUsername } from "@/lib/username";
 import { fetchRatingHistory, type RatingHistoryEntry } from "@/server/predictions/history";
+import {
+  fetchCodeforcesLeaderboard,
+  fetchCodeforcesProblems,
+} from "@/server/predictions/codeforces/leaderboard";
 import { fetchLeetCodeLeaderboard } from "@/server/predictions/leetcode/leaderboard";
 import { fetchLeetCodeQuestions } from "@/server/leetcode/contest-info";
 import { getPrediction } from "@/server/predictions/service";
@@ -129,8 +133,8 @@ export const ratingRouter = createTRPCRouter({
       });
     }),
 
-  /** Full predicted ranklist for a LeetCode contest (paginated), each row with
-   * its rating change. Backed by the self-hosted lccn-predictor service. */
+  /** Full ranklist for a contest (paginated), each row with its rating change.
+   * LeetCode → self-hosted lccn-predictor; Codeforces → Carrot/official deltas. */
   leaderboard: publicProcedure
     .input(
       z.object({
@@ -142,45 +146,54 @@ export const ratingRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const contest = await ctx.db.contest.findUnique({ where: { id: input.contestId } });
       if (!contest) return { status: "not-found" as const };
-      if (contest.platform !== "LEETCODE") return { status: "unsupported" as const };
-      return fetchLeetCodeLeaderboard(contest.externalId, input.page, input.size);
+      if (contest.platform === "LEETCODE") {
+        return fetchLeetCodeLeaderboard(contest.externalId, input.page, input.size);
+      }
+      if (contest.platform === "CODEFORCES") {
+        return fetchCodeforcesLeaderboard(contest.externalId, input.page, input.size);
+      }
+      return { status: "unsupported" as const };
     }),
 
-  /** The questions asked in a LeetCode contest (from LeetCode's own info API). */
+  /** The questions asked in a contest (LeetCode GraphQL / Codeforces standings). */
   contestQuestions: publicProcedure
     .input(z.object({ contestId: z.string() }))
     .query(async ({ ctx, input }) => {
       const contest = await ctx.db.contest.findUnique({ where: { id: input.contestId } });
-      if (!contest || contest.platform !== "LEETCODE") {
-        return { status: "unavailable" as const, questions: [] };
-      }
-      return fetchLeetCodeQuestions(contest.externalId);
+      if (!contest) return { status: "unavailable" as const, questions: [] };
+      if (contest.platform === "LEETCODE") return fetchLeetCodeQuestions(contest.externalId);
+      if (contest.platform === "CODEFORCES") return fetchCodeforcesProblems(contest.externalId);
+      return { status: "unavailable" as const, questions: [] };
     }),
 
-  /** Find one handle's row in a LeetCode contest so the UI can pin it above the
-   * paginated table (no need to page through tens of thousands of rows). Reuses
-   * the existing single-user prediction path. */
+  /** Find one handle's row in a contest so the UI can pin it above the paginated
+   * table (no need to page through tens of thousands of rows). Reuses the
+   * existing single-user prediction path (LeetCode + Codeforces). */
   findInLeaderboard: publicProcedure
     .input(z.object({ contestId: z.string(), handle: z.string().trim().min(1).max(64) }))
     .query(async ({ ctx, input }) => {
       const contest = await ctx.db.contest.findUnique({ where: { id: input.contestId } });
       if (!contest) return { status: "not-found" as const };
-      if (contest.platform !== "LEETCODE") return { status: "unsupported" as const };
+      if (contest.platform !== "LEETCODE" && contest.platform !== "CODEFORCES") {
+        return { status: "unsupported" as const };
+      }
 
       const pred = await getPrediction(contest, input.handle);
       if ((pred.state === "live" || pred.state === "final") && pred.rank != null) {
+        const profileUrl =
+          contest.platform === "CODEFORCES"
+            ? `https://codeforces.com/profile/${encodeURIComponent(input.handle)}`
+            : `https://leetcode.com/u/${encodeURIComponent(input.handle)}/`;
         return {
           status: "ok" as const,
           row: {
             rank: pred.rank,
-            username: input.handle,
-            userSlug: input.handle,
-            dataRegion: null,
+            displayName: input.handle,
+            profileUrl,
             oldRating: pred.currentRating,
             delta: pred.predictedDelta,
             newRating: pred.projectedRating,
             score: null,
-            finishTime: null,
           },
         };
       }

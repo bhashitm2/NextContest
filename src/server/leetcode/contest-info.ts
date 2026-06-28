@@ -14,22 +14,8 @@
  * Best-effort: any failure (network, shape change) degrades to `unavailable`
  * with an empty list so the page simply omits the section.
  */
+import type { ContestQuestion, ContestQuestionsResult } from "@/server/predictions/contest-results";
 import { fetchJson } from "@/server/sync/types";
-
-/** One contest problem, normalized for the UI. */
-export type ContestQuestion = {
-  id: number | null;
-  title: string;
-  slug: string;
-  /** Points the problem is worth in the contest. */
-  credit: number | null;
-  url: string;
-};
-
-export type ContestQuestionsResult = {
-  status: "ok" | "unavailable";
-  questions: ContestQuestion[];
-};
 
 type LcQuestionNode = {
   title?: string;
@@ -67,11 +53,12 @@ export async function fetchLeetCodeQuestions(slug: string): Promise<ContestQuest
 
     const questions: ContestQuestion[] = list
       .filter((q) => q.titleSlug)
-      .map((q) => ({
-        id: q.questionId != null ? Number(q.questionId) || null : null,
+      .map((q, i) => ({
+        label: `Q${i + 1}`,
         title: q.title ?? q.titleSlug!,
-        slug: q.titleSlug!,
-        credit: q.credit ?? null,
+        points: q.credit ?? null,
+        rating: null,
+        tags: [],
         url: `https://leetcode.com/problems/${q.titleSlug}/`,
       }));
 

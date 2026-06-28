@@ -3,13 +3,27 @@
 import { ChevronLeft, ChevronRight, Clock, Loader2, Search } from "lucide-react";
 import { useState } from "react";
 
-import type { LeaderboardRow } from "@/server/predictions/leetcode/leaderboard";
+import type { LeaderboardRow } from "@/server/predictions/contest-results";
 import { api } from "@/trpc/react";
 
 const PAGE_SIZE = 50;
 const GAIN = "#22c55e";
 const LOSS = "#f43f5e";
 const deltaColor = (d: number) => (d > 0 ? GAIN : d < 0 ? LOSS : "var(--cp-dim)");
+
+/** Format the lccn crawl timestamp (stored UTC, sometimes without a 'Z') as a
+ * short local date-time for the snapshot note. Returns null on a bad value. */
+function snapshotTime(iso: string): string | null {
+  const norm = /[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`;
+  const d = new Date(norm);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
@@ -37,12 +51,12 @@ function Row({ row, pinned }: { row: LeaderboardRow; pinned?: boolean }) {
       <span className="font-mono text-[13px] text-cp-dim">#{row.rank.toLocaleString()}</span>
 
       <a
-        href={`https://leetcode.com/u/${encodeURIComponent(row.userSlug)}/`}
+        href={row.profileUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="truncate text-[13.5px] font-semibold text-cp-text transition-colors hover:text-cp-accent"
       >
-        {row.username}
+        {row.displayName}
       </a>
 
       <span className="hidden text-right font-mono text-[12.5px] text-cp-dim sm:block">
@@ -63,19 +77,25 @@ function Row({ row, pinned }: { row: LeaderboardRow; pinned?: boolean }) {
   );
 }
 
-function HeaderRow() {
+function HeaderRow({ rated }: { rated: boolean }) {
   return (
     <div className="grid grid-cols-[3rem_1fr_auto] gap-3 border-b border-cp-line px-3 py-2 font-mono text-[10.5px] uppercase tracking-wide text-cp-faint sm:grid-cols-[3.5rem_1fr_5rem_7rem_4.5rem]">
       <span>Rank</span>
       <span>User</span>
       <span className="hidden text-right sm:block">Score</span>
       <span className="hidden text-right sm:block">Rating</span>
-      <span className="text-right">Δ pred.</span>
+      <span className="text-right">{rated ? "Δ" : "Δ pred."}</span>
     </div>
   );
 }
 
-export function ContestLeaderboard({ contestId }: { contestId: string }) {
+export function ContestLeaderboard({
+  contestId,
+  platformLabel,
+}: {
+  contestId: string;
+  platformLabel: string;
+}) {
   const [page, setPage] = useState(1);
   const [handleInput, setHandleInput] = useState("");
   const [searchHandle, setSearchHandle] = useState<string | null>(null);
@@ -102,7 +122,7 @@ export function ContestLeaderboard({ contestId }: { contestId: string }) {
 
   const data = lb.data;
   if (!data || data.status === "not-found" || data.status === "unsupported") {
-    return <Card>Rankings are available for LeetCode contests.</Card>;
+    return <Card>Rankings are available for LeetCode and Codeforces contests.</Card>;
   }
   if (data.status === "computing") {
     return (
@@ -129,9 +149,18 @@ export function ContestLeaderboard({ contestId }: { contestId: string }) {
   }
 
   const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
+  const snap = data.crawledAt ? snapshotTime(data.crawledAt) : null;
 
   return (
     <div className="space-y-3">
+      <p className="px-1 text-[12px] leading-relaxed text-cp-faint">
+        {snap
+          ? `Predicted from a ranking snapshot taken ${snap}. ${platformLabel} removes flagged accounts over the next day, so ranks shift until the round is officially rated.`
+          : data.rated
+            ? "Official rating changes."
+            : `Predicted — becomes official once ${platformLabel} rates the round.`}
+      </p>
+
       {/* find-a-handle search */}
       <form
         onSubmit={(e) => {
@@ -175,9 +204,9 @@ export function ContestLeaderboard({ contestId }: { contestId: string }) {
 
       {/* the ranking */}
       <div className="overflow-hidden rounded-[12px] border border-cp-line bg-cp-surface">
-        <HeaderRow />
+        <HeaderRow rated={data.rated} />
         {data.rows.map((row) => (
-          <Row key={`${row.rank}-${row.userSlug}`} row={row} />
+          <Row key={`${row.rank}-${row.displayName}`} row={row} />
         ))}
       </div>
 
