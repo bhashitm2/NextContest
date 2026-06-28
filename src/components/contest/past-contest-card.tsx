@@ -54,15 +54,37 @@ export function PastContestCard({ contest }: { contest: Contest }) {
           ) : null}
         </div>
 
-        <a
-          href={contest.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-start gap-1.5 font-display text-base font-semibold leading-snug text-cp-text transition-colors hover:text-cp-accent"
-        >
-          {contest.title}
-          <ArrowUpRight className="mt-0.5 size-3.5 flex-none text-cp-faint" />
-        </a>
+        {contest.platform === "LEETCODE" ? (
+          // LeetCode → in-app results page (questions + ranking); the platform
+          // link demotes to a small external icon.
+          <div className="flex items-start gap-1.5">
+            <Link
+              href={`/contests/${contest.id}`}
+              className="font-display text-base font-semibold leading-snug text-cp-text transition-colors hover:text-cp-accent"
+            >
+              {contest.title}
+            </Link>
+            <a
+              href={contest.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open on LeetCode"
+              className="mt-0.5 shrink-0"
+            >
+              <ArrowUpRight className="size-3.5 text-cp-faint transition-colors hover:text-cp-accent" />
+            </a>
+          </div>
+        ) : (
+          <a
+            href={contest.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-start gap-1.5 font-display text-base font-semibold leading-snug text-cp-text transition-colors hover:text-cp-accent"
+          >
+            {contest.title}
+            <ArrowUpRight className="mt-0.5 size-3.5 flex-none text-cp-faint" />
+          </a>
+        )}
       </div>
 
       <div className="relative flex items-center gap-1.5 px-[17px] pt-3.5 text-[13px] text-cp-dim">

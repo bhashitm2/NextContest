@@ -4,6 +4,8 @@ import { Platform } from "@/generated/prisma/client";
 import { forecastFromDeltas, type RatingForecast } from "@/lib/rating-forecast";
 import { normalizeUsername } from "@/lib/username";
 import { fetchRatingHistory, type RatingHistoryEntry } from "@/server/predictions/history";
+import { fetchLeetCodeLeaderboard } from "@/server/predictions/leetcode/leaderboard";
+import { fetchLeetCodeQuestions } from "@/server/leetcode/contest-info";
 import { getPrediction } from "@/server/predictions/service";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/trpc";
 
@@ -125,6 +127,66 @@ export const ratingRouter = createTRPCRouter({
         take: input.limit,
         select: { id: true, title: true, startTime: true, endTime: true, platform: true },
       });
+    }),
+
+  /** Full predicted ranklist for a LeetCode contest (paginated), each row with
+   * its rating change. Backed by the self-hosted lccn-predictor service. */
+  leaderboard: publicProcedure
+    .input(
+      z.object({
+        contestId: z.string(),
+        page: z.number().min(1).max(2000).default(1),
+        size: z.number().min(1).max(100).default(50),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const contest = await ctx.db.contest.findUnique({ where: { id: input.contestId } });
+      if (!contest) return { status: "not-found" as const };
+      if (contest.platform !== "LEETCODE") return { status: "unsupported" as const };
+      return fetchLeetCodeLeaderboard(contest.externalId, input.page, input.size);
+    }),
+
+  /** The questions asked in a LeetCode contest (from LeetCode's own info API). */
+  contestQuestions: publicProcedure
+    .input(z.object({ contestId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const contest = await ctx.db.contest.findUnique({ where: { id: input.contestId } });
+      if (!contest || contest.platform !== "LEETCODE") {
+        return { status: "unavailable" as const, questions: [] };
+      }
+      return fetchLeetCodeQuestions(contest.externalId);
+    }),
+
+  /** Find one handle's row in a LeetCode contest so the UI can pin it above the
+   * paginated table (no need to page through tens of thousands of rows). Reuses
+   * the existing single-user prediction path. */
+  findInLeaderboard: publicProcedure
+    .input(z.object({ contestId: z.string(), handle: z.string().trim().min(1).max(64) }))
+    .query(async ({ ctx, input }) => {
+      const contest = await ctx.db.contest.findUnique({ where: { id: input.contestId } });
+      if (!contest) return { status: "not-found" as const };
+      if (contest.platform !== "LEETCODE") return { status: "unsupported" as const };
+
+      const pred = await getPrediction(contest, input.handle);
+      if ((pred.state === "live" || pred.state === "final") && pred.rank != null) {
+        return {
+          status: "ok" as const,
+          row: {
+            rank: pred.rank,
+            username: input.handle,
+            userSlug: input.handle,
+            dataRegion: null,
+            oldRating: pred.currentRating,
+            delta: pred.predictedDelta,
+            newRating: pred.projectedRating,
+            score: null,
+            finishTime: null,
+          },
+        };
+      }
+      if (pred.state === "pending") return { status: "computing" as const };
+      if (pred.state === "not-participated") return { status: "not-found" as const };
+      return { status: "unavailable" as const };
     }),
 
   /** Trend forecast (per platform) from a user's cached contest history. */
