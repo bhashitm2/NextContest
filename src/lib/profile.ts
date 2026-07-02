@@ -6,12 +6,21 @@ export type DifficultyBreakdown = { easy: number; medium: number; hard: number }
 export type RecentSolved = { title: string; url: string | null; at: string };
 export type SolvedMonth = { month: string; count: number };
 export type TagCount = { tag: string; count: number };
+export type ActivityDay = { day: string; count: number };
+export type RatingPoint = {
+  at: string;
+  rating: number;
+  delta: number | null;
+  rank: number | null;
+};
 export type ProfileStatsExtra = {
   difficulty?: DifficultyBreakdown;
   contests?: number;
   recentSolved?: RecentSolved[];
   solvedByMonth?: SolvedMonth[];
   tags?: TagCount[];
+  activity?: ActivityDay[];
+  ratingHistory?: RatingPoint[];
 };
 
 /** A connected handle as rendered by the UI (subset of the Prisma row). */

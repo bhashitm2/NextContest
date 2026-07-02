@@ -1,6 +1,13 @@
 import * as cheerio from "cheerio";
 
-import { fetchJson, type ProfileStats, type RecentSolved, USER_AGENT } from "./types";
+import {
+  fetchJson,
+  type ProfileStats,
+  RATING_HISTORY_MAX_POINTS,
+  type RatingPoint,
+  type RecentSolved,
+  USER_AGENT,
+} from "./types";
 
 const PROFILE = (h: string) => `https://www.codechef.com/users/${encodeURIComponent(h)}`;
 const RECENT = (h: string) =>
@@ -123,21 +130,15 @@ export async function fetchCodeChefStats(handle: string): Promise<ProfileStats> 
   const solvedMatch =
     bodyText.match(/Total Problems Solved:\s*(\d+)/i) ?? bodyText.match(/Fully Solved\s*\((\d+)\)/i);
 
+  // The page embeds the full rating history as `all_rating` — chronological,
+  // one entry per rated contest (same source as contest-perf.ts).
+  const ratingHistory = parseAllRating($.html());
+
   // Contests participated: the profile lists a "Contests (N)" heading.
   let contests: number | undefined;
   const contestsHeading = bodyText.match(/Contests\s*\((\d+)\)/i);
   if (contestsHeading) contests = Number(contestsHeading[1]);
-  if (contests === undefined) {
-    // Fallback: the page embeds the full rating history as `all_rating`.
-    const ratingArr = $.html().match(/var\s+all_rating\s*=\s*(\[[\s\S]*?\]);/);
-    if (ratingArr) {
-      try {
-        contests = (JSON.parse(ratingArr[1]) as unknown[]).length;
-      } catch {
-        contests = undefined;
-      }
-    }
-  }
+  if (contests === undefined) contests = ratingHistory?.length;
 
   const recentSolved = await fetchRecentSolved(handle);
 
@@ -146,6 +147,45 @@ export async function fetchCodeChefStats(handle: string): Promise<ProfileStats> 
     maxRating: maxMatch ? Number(maxMatch[1]) : null,
     rank,
     problemsSolved: solvedMatch ? Number(solvedMatch[1]) : null,
-    extra: { contests, recentSolved },
+    extra: { contests, recentSolved, ratingHistory },
   };
+}
+
+type CcRatingEntry = { rating?: string | number; rank?: string | number; end_date?: string };
+
+/** Chronological rating timeline from the embedded `all_rating` array.
+ * Rating-before = the previous entry's rating (first contest has no delta). */
+function parseAllRating(html: string): RatingPoint[] | undefined {
+  const m = html.match(/var\s+all_rating\s*=\s*(\[[\s\S]*?\]);/);
+  if (!m) return undefined;
+  let arr: CcRatingEntry[];
+  try {
+    arr = JSON.parse(m[1]) as CcRatingEntry[];
+  } catch {
+    return undefined;
+  }
+
+  const toNum = (v: string | number | undefined): number | null => {
+    if (v === undefined) return null;
+    const n = typeof v === "number" ? v : parseInt(String(v).replace(/[^\d-]/g, ""), 10);
+    return Number.isNaN(n) ? null : n;
+  };
+
+  const points: RatingPoint[] = [];
+  let prev: number | null = null;
+  for (const e of arr) {
+    const ratingAfter = toNum(e.rating);
+    if (ratingAfter == null) continue;
+    // end_date is "YYYY-MM-DD HH:MM:SS" IST wall clock — day precision suffices.
+    const day = e.end_date?.slice(0, 10);
+    points.push({
+      at: day ? `${day}T00:00:00.000Z` : new Date(0).toISOString(),
+      rating: ratingAfter,
+      delta: prev == null ? null : ratingAfter - prev,
+      rank: toNum(e.rank),
+    });
+    prev = ratingAfter;
+  }
+  if (points.length === 0) return undefined;
+  return points.slice(-RATING_HISTORY_MAX_POINTS);
 }

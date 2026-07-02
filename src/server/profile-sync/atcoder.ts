@@ -1,6 +1,14 @@
 import * as cheerio from "cheerio";
 
-import { fetchJson, type ProfileStats, type RecentSolved, USER_AGENT } from "./types";
+import {
+  bucketByDay,
+  fetchJson,
+  RATING_HISTORY_MAX_POINTS,
+  type ProfileStats,
+  type RatingPoint,
+  type RecentSolved,
+  USER_AGENT,
+} from "./types";
 
 const KENKO = "https://kenkoooo.com/atcoder/atcoder-api";
 const KENKO_RES = "https://kenkoooo.com/atcoder/resources";
@@ -19,13 +27,33 @@ async function kenkoUserInfo(handle: string): Promise<UserInfo | null> {
   }
 }
 
-/** Number of contests the user has participated in (official history endpoint). */
-async function contestCount(handle: string): Promise<number | undefined> {
+type HistoryEntry = {
+  IsRated: boolean;
+  Place: number;
+  OldRating: number;
+  NewRating: number;
+  EndTime: string;
+};
+
+/** Official contest history: total count + rated-round timeline points. */
+async function contestHistory(
+  handle: string,
+): Promise<{ contests?: number; ratingHistory?: RatingPoint[] }> {
   try {
-    const arr = await fetchJson<unknown[]>(HISTORY(handle));
-    return Array.isArray(arr) ? arr.length : undefined;
+    const arr = await fetchJson<HistoryEntry[]>(HISTORY(handle));
+    if (!Array.isArray(arr)) return {};
+    const ratingHistory = arr
+      .filter((e) => e.IsRated)
+      .map((e) => ({
+        at: new Date(e.EndTime).toISOString(),
+        rating: e.NewRating,
+        delta: e.NewRating - e.OldRating,
+        rank: e.Place ?? null,
+      }))
+      .slice(-RATING_HISTORY_MAX_POINTS);
+    return { contests: arr.length, ratingHistory: ratingHistory.length ? ratingHistory : undefined };
   } catch {
-    return undefined;
+    return {};
   }
 }
 
@@ -185,7 +213,8 @@ export async function fetchAtCoderStats(handle: string): Promise<ProfileStats> {
       at: new Date(s.epoch_second * 1000).toISOString(),
     }));
 
-  const contests = await contestCount(handle);
+  const { contests, ratingHistory } = await contestHistory(handle);
+  const activity = bucketByDay(submissions.map((s) => new Date(s.epoch_second * 1000)));
 
   return {
     rating,
@@ -193,6 +222,6 @@ export async function fetchAtCoderStats(handle: string): Promise<ProfileStats> {
     rank: scrapeRank($),
     // Prefer kenkoooo's count; fall back to distinct AC from submissions.
     problemsSolved: info?.accepted_count ?? (solved.length || null),
-    extra: { difficulty, contests, recentSolved },
+    extra: { difficulty, contests, recentSolved, activity, ratingHistory },
   };
 }

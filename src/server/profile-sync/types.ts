@@ -14,6 +14,17 @@ export type SolvedMonth = { month: string; count: number };
 /** Problems solved carrying a given topic tag (e.g. "Binary Search"). */
 export type TagCount = { tag: string; count: number };
 
+/** Submissions made on a given UTC day ("YYYY-MM-DD"), for the activity heatmap. */
+export type ActivityDay = { day: string; count: number };
+
+/** One point of a handle's rating timeline (contest-by-contest). */
+export type RatingPoint = {
+  at: string; // ISO date of the contest
+  rating: number; // rating after the contest
+  delta: number | null;
+  rank: number | null;
+};
+
 /**
  * A user's stats on one platform, normalized across sources. The top-level
  * fields map to PlatformHandle columns; `extra` is stored in the `stats` JSON
@@ -30,8 +41,14 @@ export type ProfileStats = {
     recentSolved?: RecentSolved[];
     solvedByMonth?: SolvedMonth[];
     tags?: TagCount[];
+    activity?: ActivityDay[];
+    ratingHistory?: RatingPoint[];
   };
 };
+
+/** Keep the persisted jsonb (and the RSC payload built from it) bounded. */
+export const ACTIVITY_WINDOW_DAYS = 366;
+export const RATING_HISTORY_MAX_POINTS = 500;
 
 /** The shape persisted to `PlatformHandle.stats`. */
 export type ProfileStatsExtra = ProfileStats["extra"];
@@ -49,6 +66,24 @@ export function bucketByMonth(dates: Date[]): SolvedMonth[] {
     counts.set(k, (counts.get(k) ?? 0) + 1);
   }
   return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([month, count]) => ({ month, count }));
+}
+
+/** "YYYY-MM-DD" bucket key for a Date (UTC). */
+export function dayKey(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** Roll submission dates into ascending {day,count} buckets, keeping only the
+ * trailing activity window. */
+export function bucketByDay(dates: Date[], windowDays = ACTIVITY_WINDOW_DAYS): ActivityDay[] {
+  const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000;
+  const counts = new Map<string, number>();
+  for (const d of dates) {
+    if (d.getTime() < cutoff) continue;
+    const k = dayKey(d);
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([day, count]) => ({ day, count }));
 }
 
 /** Platforms the profile feature can fetch stats for — the single source of truth

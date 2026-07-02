@@ -1,4 +1,11 @@
-import { fetchJson, type ProfileStats, type RecentSolved } from "./types";
+import {
+  bucketByDay,
+  fetchJson,
+  RATING_HISTORY_MAX_POINTS,
+  type ProfileStats,
+  type RatingPoint,
+  type RecentSolved,
+} from "./types";
 
 type CfUser = {
   handle: string;
@@ -18,17 +25,32 @@ type CfSubmission = {
 };
 type CfStatusResponse = { status: string; result?: CfSubmission[]; comment?: string };
 
-type CfRatingResponse = { status: string; result?: { contestId: number }[] };
+type CfRatingEntry = {
+  contestId: number;
+  rank: number;
+  ratingUpdateTimeSeconds: number;
+  oldRating: number;
+  newRating: number;
+};
+type CfRatingResponse = { status: string; result?: CfRatingEntry[] };
 
 const API = "https://codeforces.com/api";
 
-/** Number of rated contests the user has participated in. */
-async function contestCount(handle: string): Promise<number | undefined> {
+/** Full rated-contest history as timeline points (oldest → newest). */
+async function ratingHistory(handle: string): Promise<RatingPoint[] | undefined> {
   try {
     const json = await fetchJson<CfRatingResponse>(
       `${API}/user.rating?handle=${encodeURIComponent(handle)}`,
     );
-    return json.status === "OK" ? json.result?.length : undefined;
+    if (json.status !== "OK" || !json.result) return undefined;
+    return json.result
+      .map((e) => ({
+        at: new Date(e.ratingUpdateTimeSeconds * 1000).toISOString(),
+        rating: e.newRating,
+        delta: e.newRating - e.oldRating,
+        rank: e.rank,
+      }))
+      .slice(-RATING_HISTORY_MAX_POINTS);
   } catch {
     return undefined;
   }
@@ -134,13 +156,23 @@ export async function fetchCodeforcesStats(handle: string): Promise<ProfileStats
       at: new Date(s.creationTimeSeconds * 1000).toISOString(),
     }));
 
-  const contests = await contestCount(handle);
+  // Every submission (any verdict) counts as activity for the heatmap.
+  const activity = bucketByDay(subs.map((s) => new Date(s.creationTimeSeconds * 1000)));
+
+  const history = await ratingHistory(handle);
 
   return {
     rating: user.rating ?? null,
     maxRating: user.maxRating ?? null,
     rank: user.rank ?? null,
     problemsSolved: solved.length,
-    extra: { difficulty, contests, recentSolved, tags },
+    extra: {
+      difficulty,
+      contests: history?.length,
+      recentSolved,
+      tags,
+      activity,
+      ratingHistory: history,
+    },
   };
 }
