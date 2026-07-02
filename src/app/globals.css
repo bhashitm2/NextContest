@@ -223,6 +223,41 @@
   }
 }
 
+/* Rating-timeline chart: line draws left→right (pathLength=1 normalizes the
+ * dash to the whole path), area/dots fade in behind it. */
+@keyframes chartLineDraw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.chart-line-draw {
+  stroke-dasharray: 1;
+  animation: chartLineDraw 0.7s ease-out 0.1s both;
+}
+@keyframes chartFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.chart-fade-in {
+  animation: chartFadeIn 0.5s ease 0.35s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-line-draw {
+    animation: none;
+    stroke-dasharray: none;
+  }
+  .chart-fade-in {
+    animation: none;
+  }
+}
+
 /* Gamified 404 */
 @keyframes float404 {
   0%,
