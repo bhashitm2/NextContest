@@ -3,6 +3,7 @@ import superjson from "superjson";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { checkRateLimit, clientIpFrom } from "@/lib/rate-limit";
 
 /** tRPC request context. `userId` is resolved from the Auth.js session. */
 export async function createTRPCContext(opts: { headers: Headers }) {
@@ -31,3 +32,19 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   }
   return next({ ctx: { ...ctx, userId: ctx.userId } });
 });
+
+/** Throttle a procedure to `max` calls per `windowMs`, keyed by user when
+ * signed in, else by client IP. `bucket` isolates limits between procedures. */
+export function rateLimited(bucket: string, max: number, windowMs: number) {
+  return t.middleware(({ ctx, next }) => {
+    const who = ctx.userId ?? `ip:${clientIpFrom(ctx.headers)}`;
+    const { ok, retryAfterMs } = checkRateLimit(`${bucket}:${who}`, { max, windowMs });
+    if (!ok) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: `Too many requests — try again in ${Math.ceil(retryAfterMs / 1000)}s.`,
+      });
+    }
+    return next();
+  });
+}

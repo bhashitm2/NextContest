@@ -17,10 +17,14 @@ import {
   validateHandle,
   VERIFICATION_FIELD,
 } from "@/server/profile-sync";
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure, rateLimited } from "@/server/trpc";
 import { normalizeUsername, validateUsername } from "@/lib/username";
 
 const platformInput = z.enum(PROFILE_PLATFORM_VALUES);
+
+/** These procedures fetch external platform pages/APIs on demand — throttle
+ * per user so one account can't turn us into a scraping relay. */
+const externalFetchLimit = rateLimited("handle.external", 6, 60_000);
 
 /** Re-fetch stats at most once per this window via the manual Refresh button. */
 const REFRESH_THROTTLE_MS = 60 * 1000;
@@ -83,6 +87,7 @@ export const handleRouter = createTRPCRouter({
 
   /** Connect a handle: validate it exists, then mint a verification code. */
   add: protectedProcedure
+    .use(externalFetchLimit)
     .input(z.object({ platform: platformInput, handle: z.string().trim().min(1).max(64) }))
     .mutation(async ({ ctx, input }) => {
       const platform = input.platform as ProfilePlatform;
@@ -113,6 +118,7 @@ export const handleRouter = createTRPCRouter({
 
   /** Confirm ownership: scan the platform profile field for the token. */
   verify: protectedProcedure
+    .use(externalFetchLimit)
     .input(z.object({ platform: platformInput }))
     .mutation(async ({ ctx, input }) => {
       const platform = input.platform as ProfilePlatform;
@@ -160,6 +166,7 @@ export const handleRouter = createTRPCRouter({
 
   /** Start a compile-error challenge: pin a random problem + record the time. */
   startSubmissionChallenge: protectedProcedure
+    .use(externalFetchLimit)
     .input(z.object({ platform: platformInput }))
     .mutation(async ({ ctx, input }) => {
       const platform = input.platform as ProfilePlatform;
@@ -188,6 +195,7 @@ export const handleRouter = createTRPCRouter({
 
   /** Confirm ownership by detecting a fresh compile-error submission. */
   verifySubmission: protectedProcedure
+    .use(externalFetchLimit)
     .input(z.object({ platform: platformInput }))
     .mutation(async ({ ctx, input }) => {
       const platform = input.platform as ProfilePlatform;
@@ -233,6 +241,7 @@ export const handleRouter = createTRPCRouter({
 
   /** Manually re-fetch stats for a verified handle (throttled). */
   refresh: protectedProcedure
+    .use(externalFetchLimit)
     .input(z.object({ platform: platformInput }))
     .mutation(async ({ ctx, input }) => {
       const platform = input.platform as ProfilePlatform;
@@ -288,6 +297,7 @@ export const handleRouter = createTRPCRouter({
 
   /** Public profile by username — only verified handles, no sensitive fields. */
   publicProfile: publicProcedure
+    .use(rateLimited("handle.publicProfile", 30, 60_000))
     .input(z.object({ username: z.string() }))
     .query(async ({ ctx, input }) => {
       const username = normalizeUsername(input.username);

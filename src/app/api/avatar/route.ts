@@ -3,6 +3,8 @@
 // headers, so loading them cross-origin fails. Fetching them here and re-serving
 // from our own origin sidesteps CORS entirely. Host-allowlisted to prevent SSRF.
 
+import { checkRateLimit, clientIpFrom } from "@/lib/rate-limit";
+
 export const runtime = "nodejs";
 
 const ALLOWED_HOST_SUFFIXES = [
@@ -51,6 +53,15 @@ async function fetchValidated(start: URL): Promise<Response | null> {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  const ip = clientIpFrom(request.headers);
+  const limit = checkRateLimit(`avatar:${ip}`, { max: 60, windowMs: 60_000 });
+  if (!limit.ok) {
+    return new Response("rate limited", {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)) },
+    });
+  }
+
   const raw = new URL(request.url).searchParams.get("u");
   if (!raw) return new Response("missing u", { status: 400 });
 
@@ -80,11 +91,29 @@ export async function GET(request: Request): Promise<Response> {
     return new Response("not an image", { status: 400 });
   }
 
-  return new Response(upstream.body, {
+  return new Response(upstream.body ? capBytes(upstream.body, MAX_BYTES) : null, {
     status: 200,
     headers: {
       "Content-Type": contentType,
       "Cache-Control": "public, max-age=86400, immutable",
     },
   });
+}
+
+/** Enforce MAX_BYTES on the actual stream — Content-Length can lie, so a
+ * misbehaving upstream must not be able to relay an unbounded body through us. */
+function capBytes(body: ReadableStream<Uint8Array>, limit: number): ReadableStream<Uint8Array> {
+  let total = 0;
+  return body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        total += chunk.byteLength;
+        if (total > limit) {
+          controller.error(new Error("body exceeds size limit"));
+          return;
+        }
+        controller.enqueue(chunk);
+      },
+    }),
+  );
 }

@@ -11,7 +11,7 @@ import {
 import { fetchLeetCodeLeaderboard } from "@/server/predictions/leetcode/leaderboard";
 import { fetchLeetCodeQuestions } from "@/server/leetcode/contest-info";
 import { getPrediction } from "@/server/predictions/service";
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure, rateLimited } from "@/server/trpc";
 
 /** A still-unrated contest at most this old is worth predicting. */
 const PREDICT_TAIL_MS = 48 * 60 * 60 * 1000;
@@ -50,6 +50,7 @@ export const ratingRouter = createTRPCRouter({
   /** Handle-first rating history: a handle's recent contests, each with its
    * rating change (actual for rated rounds; predicted for the latest unrated one). */
   history: publicProcedure
+    .use(rateLimited("rating.history", 12, 60_000))
     .input(
       z.object({
         platform: z.enum(PREDICTABLE),
@@ -104,6 +105,7 @@ export const ratingRouter = createTRPCRouter({
 
   /** Public lookup: any handle on any predictable contest. */
   lookup: publicProcedure
+    .use(rateLimited("rating.lookup", 12, 60_000))
     .input(
       z.object({
         platform: z.enum(PREDICTABLE),
@@ -136,6 +138,8 @@ export const ratingRouter = createTRPCRouter({
   /** Full ranklist for a contest (paginated), each row with its rating change.
    * LeetCode → self-hosted lccn-predictor; Codeforces → Carrot/official deltas. */
   leaderboard: publicProcedure
+    // generous enough for paging through a big ranklist, tight enough to stop hammering
+    .use(rateLimited("rating.leaderboard", 30, 60_000))
     .input(
       z.object({
         contestId: z.string(),
@@ -157,6 +161,7 @@ export const ratingRouter = createTRPCRouter({
 
   /** The questions asked in a contest (LeetCode GraphQL / Codeforces standings). */
   contestQuestions: publicProcedure
+    .use(rateLimited("rating.contestQuestions", 12, 60_000))
     .input(z.object({ contestId: z.string() }))
     .query(async ({ ctx, input }) => {
       const contest = await ctx.db.contest.findUnique({ where: { id: input.contestId } });
@@ -170,6 +175,7 @@ export const ratingRouter = createTRPCRouter({
    * table (no need to page through tens of thousands of rows). Reuses the
    * existing single-user prediction path (LeetCode + Codeforces). */
   findInLeaderboard: publicProcedure
+    .use(rateLimited("rating.findInLeaderboard", 12, 60_000))
     .input(z.object({ contestId: z.string(), handle: z.string().trim().min(1).max(64) }))
     .query(async ({ ctx, input }) => {
       const contest = await ctx.db.contest.findUnique({ where: { id: input.contestId } });

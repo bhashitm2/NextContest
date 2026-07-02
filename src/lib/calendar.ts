@@ -77,7 +77,7 @@ function icsEvent(c: CalendarContest, opts: CalendarAlarms & { cancelled?: boole
     `DTEND:${toICSDate(c.endTime)}`,
     `SUMMARY:${escapeICS(c.title)}`,
     `DESCRIPTION:${escapeICS(`Contest link: ${c.url}`)}`,
-    `URL:${c.url}`,
+    `URL:${escapeICS(c.url)}`,
     "STATUS:CONFIRMED",
     "SEQUENCE:0",
     ...(want24h ? valarm("-P1D", `${c.title} starts in 24 hours`) : []),

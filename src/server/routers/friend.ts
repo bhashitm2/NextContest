@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { totalSolved } from "@/lib/profile";
 import { normalizeUsername } from "@/lib/username";
-import { createTRPCRouter, protectedProcedure } from "@/server/trpc";
+import { createTRPCRouter, protectedProcedure, rateLimited } from "@/server/trpc";
 
 export type RelStatus = "none" | "outgoing" | "incoming" | "friends";
 
@@ -18,6 +18,8 @@ const friendSelect = {
 export const friendRouter = createTRPCRouter({
   /** Search public users by CodeTag (username), annotated with our relationship. */
   search: protectedProcedure
+    // search-as-you-type fires often; this only needs to deter username scraping
+    .use(rateLimited("friend.search", 60, 60_000))
     .input(z.object({ query: z.string().trim().min(1).max(40) }))
     .query(async ({ ctx, input }) => {
       const q = normalizeUsername(input.query);
