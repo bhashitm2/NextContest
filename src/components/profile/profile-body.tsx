@@ -67,7 +67,7 @@ export function ProfileBody({ handles }: { handles: HandleView[] }) {
             Submission activity
           </div>
           <p className="mb-3 text-[12px] text-cp-dim">
-            Submissions per day (UTC) over the last year across {activityLabel}.
+            Submissions per day (UTC) across {activityLabel}.
           </p>
           <ActivityHeatmap days={activity.days} />
         </div>
