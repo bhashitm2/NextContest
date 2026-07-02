@@ -129,7 +129,7 @@ export function ActivityHeatmap({ days }: { days: ActivityDay[] }) {
 
       {hover ? (
         <div
-          className="pointer-events-none absolute z-10 whitespace-nowrap rounded-[8px] border border-cp-line bg-cp-surface px-2.5 py-1.5 text-[11px] shadow-md"
+          className="pointer-events-none absolute z-10 whitespace-nowrap rounded-[8px] border border-cp-line bg-cp-bg px-2.5 py-1.5 text-[11px] shadow-lg"
           style={{
             left: hover.x,
             top: hover.y,
