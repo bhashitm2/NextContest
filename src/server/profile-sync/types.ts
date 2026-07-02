@@ -46,8 +46,10 @@ export type ProfileStats = {
   };
 };
 
-/** Keep the persisted jsonb (and the RSC payload built from it) bounded. */
-export const ACTIVITY_WINDOW_DAYS = 366;
+/** Keep the persisted jsonb (and the RSC payload built from it) bounded.
+ * Activity keeps up to ~10 years of day buckets — CF/AtCoder submissions and
+ * LeetCode per-year calendars all reach at least that far back. */
+export const ACTIVITY_WINDOW_DAYS = 3660;
 export const RATING_HISTORY_MAX_POINTS = 500;
 
 /** The shape persisted to `PlatformHandle.stats`. */

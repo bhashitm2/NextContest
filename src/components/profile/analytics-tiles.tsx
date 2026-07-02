@@ -30,7 +30,7 @@ export function AnalyticsTiles({
       />
     ) : null,
     streaks ? (
-      <Tile key="active" label="Active days" value={String(streaks.activeDays)} sub="last year" />
+      <Tile key="active" label="Active days" value={streaks.activeDays.toLocaleString()} sub="all time" />
     ) : null,
     // Hide contest-form tiles entirely when there's been no rated activity —
     // "Contests 0" next to real streak data reads like an error.

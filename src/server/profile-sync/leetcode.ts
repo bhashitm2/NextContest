@@ -117,42 +117,74 @@ export async function fetchLeetCodeStats(handle: string): Promise<ProfileStats> 
   };
 }
 
-const CALENDAR_QUERY = `query userCalendar($username: String!) {
-  matchedUser(username: $username) { userCalendar { submissionCalendar } }
+const CALENDAR_QUERY = `query userCalendar($username: String!, $year: Int) {
+  matchedUser(username: $username) {
+    userCalendar(year: $year) { activeYears submissionCalendar }
+  }
 }`;
 
-/** LeetCode's calendar is a JSON string of { "<epochSec of UTC day>": count }
- * spanning the trailing ~12 months — already day-bucketed. Fetched separately
- * from the main profile query: users can make their calendar private, which
- * nulls out the WHOLE matchedUser of any query that includes userCalendar —
- * bundling it would break the entire stats sync for those users. */
+/** How many years of LeetCode calendars to pull (one GraphQL call per year). */
+const MAX_CALENDAR_YEARS = 10;
+
+type LcCalendar = { activeYears?: number[] | null; submissionCalendar?: string | null };
+
+async function fetchCalendar(handle: string, year?: number): Promise<LcCalendar | undefined> {
+  const json = await fetchJson<{
+    data?: { matchedUser?: { userCalendar?: LcCalendar | null } | null };
+  }>(GQL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Referer: "https://leetcode.com" },
+    body: JSON.stringify({
+      query: CALENDAR_QUERY,
+      variables: year != null ? { username: handle, year } : { username: handle },
+    }),
+  });
+  return json.data?.matchedUser?.userCalendar ?? undefined;
+}
+
+/** Parse a submissionCalendar JSON string ({ "<epochSec of UTC day>": count }). */
+function parseCalendar(raw: string | null | undefined, into: Map<string, number>): void {
+  if (!raw) return;
+  const obj = JSON.parse(raw) as Record<string, number>;
+  for (const [sec, count] of Object.entries(obj)) {
+    if (count <= 0) continue;
+    const day = new Date(Number(sec) * 1000).toISOString().slice(0, 10);
+    into.set(day, (into.get(day) ?? 0) + count);
+  }
+}
+
+/** Full submission activity: LeetCode's calendar defaults to the trailing ~12
+ * months, but takes a `year` argument and reports `activeYears` — so fetch
+ * each active year for the complete history. Fetched separately from the main
+ * profile query: users can make their calendar private, which nulls out the
+ * WHOLE matchedUser of any query that includes userCalendar — bundling it
+ * would break the entire stats sync for those users. */
 async function fetchActivity(handle: string): Promise<ActivityDay[] | undefined> {
-  let raw: string | null | undefined;
+  const merged = new Map<string, number>();
+  let years: number[];
   try {
-    const json = await fetchJson<{
-      data?: { matchedUser?: { userCalendar?: { submissionCalendar?: string | null } | null } | null };
-    }>(GQL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Referer: "https://leetcode.com" },
-      body: JSON.stringify({ query: CALENDAR_QUERY, variables: { username: handle } }),
-    });
-    raw = json.data?.matchedUser?.userCalendar?.submissionCalendar;
+    const first = await fetchCalendar(handle);
+    if (!first) return undefined;
+    years = (first.activeYears ?? []).slice(-MAX_CALENDAR_YEARS);
+    // No per-year data to fetch — fall back to the default trailing window.
+    if (years.length === 0) {
+      parseCalendar(first.submissionCalendar, merged);
+    }
   } catch {
     return undefined;
   }
-  if (!raw) return undefined;
-  try {
-    const obj = JSON.parse(raw) as Record<string, number>;
-    return Object.entries(obj)
-      .filter(([, count]) => count > 0)
-      .map(([sec, count]) => ({
-        day: new Date(Number(sec) * 1000).toISOString().slice(0, 10),
-        count,
-      }))
-      .sort((a, b) => a.day.localeCompare(b.day));
-  } catch {
-    return undefined;
+  for (const year of years) {
+    try {
+      const cal = await fetchCalendar(handle, year);
+      parseCalendar(cal?.submissionCalendar, merged);
+    } catch {
+      // best-effort: a failed year just leaves a gap
+    }
   }
+  if (merged.size === 0) return undefined;
+  return [...merged.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, count]) => ({ day, count }));
 }
 
 /** Contest rating timeline via the shared per-user history fetcher (best-effort). */
