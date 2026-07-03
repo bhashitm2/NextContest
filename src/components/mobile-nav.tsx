@@ -15,6 +15,7 @@ const PUBLIC_ITEMS: NavItem[] = [
 
 const AUTHED_ITEMS: NavItem[] = [
   { href: "/friends", label: "Friends" },
+  { href: "/duels", label: "Duels" },
   { href: "/profile", label: "Profile" },
 ];
 
@@ -26,10 +27,12 @@ const AUTHED_ITEMS: NavItem[] = [
 export function MobileNav({
   isAuthed,
   pendingRequests,
+  pendingDuels = 0,
   signOutAction,
 }: {
   isAuthed: boolean;
   pendingRequests: number;
+  pendingDuels?: number;
   signOutAction?: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -101,7 +104,12 @@ export function MobileNav({
 
             {items.map((item) => {
               const active = isActive(item.href);
-              const isFriends = item.href === "/friends";
+              const badgeCount =
+                item.href === "/friends"
+                  ? pendingRequests
+                  : item.href === "/duels"
+                    ? pendingDuels
+                    : 0;
               return (
                 <Link
                   key={item.href}
@@ -115,9 +123,9 @@ export function MobileNav({
                   }`}
                 >
                   <span>{item.label}</span>
-                  {isFriends && pendingRequests > 0 ? (
+                  {badgeCount > 0 ? (
                     <span className="grid min-w-[18px] place-items-center rounded-full bg-cp-accent px-1 text-[11px] font-bold leading-5 text-cp-accent-ink">
-                      {pendingRequests}
+                      {badgeCount}
                     </span>
                   ) : null}
                 </Link>

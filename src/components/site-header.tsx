@@ -10,9 +10,19 @@ export async function SiteHeader() {
   const session = await auth();
   const user = session?.user;
   const initial = (user?.name ?? user?.email ?? "?").charAt(0).toUpperCase();
-  const pendingRequests = user?.id
-    ? await prisma.friendship.count({ where: { addresseeId: user.id, status: "PENDING" } })
-    : 0;
+  const [pendingRequests, pendingDuels] = user?.id
+    ? await Promise.all([
+        prisma.friendship.count({ where: { addresseeId: user.id, status: "PENDING" } }),
+        prisma.duel.count({
+          where: {
+            opponentId: user.id,
+            status: "PENDING",
+            // Only invites still actionable (they expire lazily after 24h).
+            createdAt: { gt: new Date(new Date().getTime() - 24 * 60 * 60 * 1000) },
+          },
+        }),
+      ])
+    : [0, 0];
 
   const signOutAction = async () => {
     "use server";
@@ -44,7 +54,11 @@ export async function SiteHeader() {
         </Link>
 
         <nav className="flex items-center gap-1.5 sm:gap-2.5">
-          <MainNav isAuthed={Boolean(user)} pendingRequests={pendingRequests} />
+          <MainNav
+            isAuthed={Boolean(user)}
+            pendingRequests={pendingRequests}
+            pendingDuels={pendingDuels}
+          />
 
           {user ? (
             <div className="hidden sm:block">
@@ -105,6 +119,7 @@ export async function SiteHeader() {
           <MobileNav
             isAuthed={Boolean(user)}
             pendingRequests={pendingRequests}
+            pendingDuels={pendingDuels}
             signOutAction={user ? signOutAction : undefined}
           />
         </nav>

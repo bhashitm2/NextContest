@@ -67,6 +67,8 @@ model User {
   tombstones CalendarTombstone[]
   sentRequests     Friendship[] @relation("SentRequests")
   receivedRequests Friendship[] @relation("ReceivedRequests")
+  duelsSent     Duel[] @relation("DuelsSent")
+  duelsReceived Duel[] @relation("DuelsReceived")
 }
 
 model Account {
@@ -225,6 +227,59 @@ model Friendship {
   @@unique([requesterId, addresseeId])
   @@index([addresseeId, status])
   @@index([requesterId, status])
+}
+
+// v1.7 Problem Duels. Challenge a friend to solve N unsolved-by-both problems
+// in a time window (Codeforces-only v1). One row per duel; the problem set +
+// per-player solve timestamps live in `problems` Json (written once at accept,
+// always read as a whole set, N ≤ 7 — separate rows would only add joins).
+// Handles are FROZEN onto the row at accept so removing/unverifying a handle
+// mid-duel can't break judging. Cancel deletes the PENDING row (no CANCELLED).
+enum DuelStatus {
+  PENDING // invite sent, opponent hasn't responded
+  ACTIVE // accepted; clock running
+  FINISHED
+  DECLINED
+  EXPIRED // invite older than 24h, marked lazily
+}
+
+enum DuelFormat {
+  TIMED // most solves when the clock ends (tie → lower penalty → draw)
+  FIRST_SOLVE // first AC on any duel problem wins immediately
+  RACE // first to solve ALL problems wins (may end early)
+}
+
+model Duel {
+  id           String     @id @default(cuid())
+  platform     Platform   @default(CODEFORCES)
+  challengerId String
+  opponentId   String
+  status       DuelStatus @default(PENDING)
+  format       DuelFormat
+  problemCount Int // from preset: 3 | 5 | 7
+  durationSec  Int // from preset: 1800 | 3600 | 7200
+  winTarget    Int? // null=TIMED, 1=FIRST_SOLVE, =problemCount for RACE
+  ratingMin    Int
+  ratingMax    Int
+
+  challengerHandle String? // frozen at accept
+  opponentHandle   String?
+  problems         Json? // DuelProblem[] — set at accept (see server/duel)
+
+  startedAt     DateTime?
+  endsAt        DateTime?
+  finishedAt    DateTime?
+  winnerId      String? // null while running or on a draw
+  draw          Boolean   @default(false)
+  lastCheckedAt DateTime? // judging throttle + stampede guard
+  createdAt     DateTime  @default(now())
+  respondedAt   DateTime?
+
+  challenger User @relation("DuelsSent", fields: [challengerId], references: [id], onDelete: Cascade)
+  opponent   User @relation("DuelsReceived", fields: [opponentId], references: [id], onDelete: Cascade)
+
+  @@index([challengerId, status])
+  @@index([opponentId, status])
 }
 
 // v0.6 Phase 3. Caches the AI-written head-to-head verdict for a pair of users.
