@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+judge/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -32,6 +33,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!judge/.env.example
 
 # vercel
 .vercel
@@ -43,3 +45,7 @@ next-env.d.ts
 /src/generated/prisma
 
 .vercel
+
+# v1.8 problem sources: reference solutions + hidden-test generators — repo is
+# public, so these must never be committed (DB is the source of truth).
+scripts/manual/

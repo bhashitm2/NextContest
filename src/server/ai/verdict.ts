@@ -1,9 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { CompareResult, Winner } from "@/lib/compare";
-
-// gemini-2.5-flash has free-tier quota; older 2.0-flash is now limit:0 on new keys.
-const DEFAULT_MODEL = "gemini-2.5-flash";
+import { callGemini } from "@/server/ai/gemini";
 
 /** Display label for a side of the comparison. */
 function nameOf(side: CompareResult["a"], fallback: string): string {
@@ -61,10 +59,6 @@ function promptData(r: CompareResult, aName: string, bName: string) {
  * blocks the comparison.
  */
 export async function generateVerdict(r: CompareResult): Promise<string | null> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
-
-  const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
   const aName = nameOf(r.a, "Player A");
   const bName = nameOf(r.b, "Player B");
 
@@ -76,36 +70,7 @@ export async function generateVerdict(r: CompareResult): Promise<string | null> 
     "to the players by name. Output plain text only.\n\nDATA:\n" +
     JSON.stringify(promptData(r, aName, bName));
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-
-  try {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.9,
-          maxOutputTokens: 256,
-          // 2.5-flash "thinks" by default, which would consume the token budget
-          // before the answer. We just need a short hype line — disable thinking.
-          thinkingConfig: { thinkingBudget: 0 },
-        },
-      }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
-    };
-    const text = json.candidates?.[0]?.content?.parts
-      ?.map((p) => p.text ?? "")
-      .join("")
-      .trim();
-    return text && text.length > 0 ? text : null;
-  } catch {
-    return null;
-  }
+  return callGemini(prompt, { temperature: 0.9, maxOutputTokens: 256 });
 }
 
 /** Deterministic templated verdict used when the AI is unavailable. */

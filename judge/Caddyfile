@@ -1,0 +1,3 @@
+{$JUDGE_DOMAIN} {
+	reverse_proxy judge:8080
+}

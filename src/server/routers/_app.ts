@@ -7,6 +7,7 @@ import { contestRouter } from "./contest";
 import { duelRouter } from "./duel";
 import { friendRouter } from "./friend";
 import { handleRouter } from "./handle";
+import { practiceRouter } from "./practice";
 import { ratingRouter } from "./rating";
 import { subscriptionRouter } from "./subscription";
 import { userRouter } from "./user";
@@ -22,6 +23,7 @@ export const appRouter = createTRPCRouter({
   compare: compareRouter,
   rating: ratingRouter,
   duel: duelRouter,
+  practice: practiceRouter,
 });
 
 export type AppRouter = typeof appRouter;

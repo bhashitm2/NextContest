@@ -1,0 +1,26 @@
+# Watchdog + keep-warm for the self-hosted nc-judge VM.
+# A failing run emails the repo owner (GitHub's default on workflow failure),
+# and the regular traffic adds a little activity against Oracle's Always Free
+# idle-reclaim heuristics (see judge/README.md for the real mitigation).
+# Requires one repo secret: JUDGE_URL (e.g. https://<ip-dashes>.sslip.io).
+name: Judge health check
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # every 15 minutes
+  workflow_dispatch: {} # allow manual runs
+
+jobs:
+  healthz:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /healthz
+        run: |
+          code=$(curl -sSL -o /tmp/body.json -w "%{http_code}" \
+            --max-time 20 \
+            "${{ secrets.JUDGE_URL }}/healthz")
+          echo "HTTP $code"
+          cat /tmp/body.json
+          if [ "$code" != "200" ]; then
+            exit 1
+          fi

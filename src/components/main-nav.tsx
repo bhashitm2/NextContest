@@ -7,6 +7,7 @@ type NavItem = { href: string; label: string };
 
 const PUBLIC_ITEMS: NavItem[] = [
   { href: "/contests", label: "Contests" },
+  { href: "/practice", label: "Practice" },
   { href: "/ratings", label: "Ratings" },
 ];
 

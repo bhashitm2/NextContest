@@ -1,0 +1,31 @@
+services:
+  judge:
+    build: .
+    restart: unless-stopped
+    environment:
+      JUDGE_SECRET: ${JUDGE_SECRET:?set in .env}
+      # Sandbox workdirs are bind-mounted by the HOST daemon, so the path the
+      # judge writes to must be the same path on the host. Mount it 1:1.
+      WORK_DIR: /srv/nc-judge/work
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/nc-judge/work:/srv/nc-judge/work
+    expose:
+      - "8080"
+
+  # Free auto-HTTPS: JUDGE_DOMAIN=<vm-ip>.sslip.io resolves to the VM with no
+  # DNS setup, and Caddy provisions the Let's Encrypt cert automatically.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      JUDGE_DOMAIN: ${JUDGE_DOMAIN:?set in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+
+volumes:
+  caddy-data:

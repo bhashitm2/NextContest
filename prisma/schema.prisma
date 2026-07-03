@@ -69,6 +69,7 @@ model User {
   receivedRequests Friendship[] @relation("ReceivedRequests")
   duelsSent     Duel[] @relation("DuelsSent")
   duelsReceived Duel[] @relation("DuelsReceived")
+  judgeSubmissions JudgeSubmission[]
 }
 
 model Account {
@@ -280,6 +281,87 @@ model Duel {
 
   @@index([challengerId, status])
   @@index([opponentId, status])
+}
+
+// v1.8 NextContest Judge — Practice. Own problem bank + own execution
+// (nc-judge microservice on the Oracle VM). Problems are AI-drafted, validated
+// (the reference solution must AC through the real judge) and human-reviewed:
+// DRAFT rows are visible/publishable only by the admin. Samples are the
+// hidden=false tests; hidden test data never leaves the server. A future
+// in-house duel references Problem rows and detects solves from
+// JudgeSubmission (judging is synchronous → instant, no polling).
+enum ProblemStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum JudgeLanguage {
+  PYTHON
+  CPP
+  JAVA
+}
+
+enum JudgeVerdict {
+  AC // accepted
+  WA // wrong answer
+  TLE // time limit exceeded
+  MLE // memory limit exceeded (container OOM-kill)
+  RE // runtime error
+  CE // compile error
+  JUDGE_ERROR // judge reachable but failed internally (kept for diagnostics)
+}
+
+model Problem {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  statementMd String        @db.Text
+  editorialMd String?       @db.Text // shown under the Editorial tab (spoiler-gated in the UI)
+  difficulty  Int // CF-style 800–2400
+  tags        String[]
+  timeLimitMs Int           @default(2000)
+  memoryMb    Int           @default(256)
+  status      ProblemStatus @default(DRAFT)
+  ord         Int           @default(0) // curated list order (difficulty tiebreak)
+  createdAt   DateTime      @default(now())
+
+  tests       ProblemTest[]
+  submissions JudgeSubmission[]
+
+  @@index([status, difficulty])
+}
+
+model ProblemTest {
+  id        String  @id @default(cuid())
+  problemId String
+  ord       Int
+  input     String  @db.Text
+  expected  String  @db.Text
+  hidden    Boolean @default(true) // hidden=false ⇒ sample shown in the statement
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([problemId, ord])
+}
+
+model JudgeSubmission {
+  id            String        @id @default(cuid())
+  userId        String
+  problemId     String
+  language      JudgeLanguage
+  source        String        @db.Text
+  verdict       JudgeVerdict
+  passedCount   Int
+  totalCount    Int
+  timeMs        Int?
+  compileOutput String?       @db.Text
+  createdAt     DateTime      @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([userId, problemId, createdAt])
+  @@index([problemId, verdict])
 }
 
 // v0.6 Phase 3. Caches the AI-written head-to-head verdict for a pair of users.
