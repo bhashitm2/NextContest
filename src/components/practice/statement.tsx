@@ -1,15 +1,22 @@
 "use client";
 
+import "katex/dist/katex.min.css";
+
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
+import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 
-/** Shared markdown prose styling for statements and editorials. */
+/** Shared markdown prose styling for statements and editorials. Supports
+ * LaTeX math via $…$ / $$…$$ (KaTeX); plain-Unicode notation renders as-is. */
 export function MarkdownProse({ markdown }: { markdown: string }) {
   return (
-    <div className="prose-statement text-[14.5px] leading-relaxed text-cp-text [&_a]:text-cp-accent [&_code]:rounded [&_code]:bg-cp-bg-soft [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[13px] [&_h1]:mt-5 [&_h1]:text-[18px] [&_h1]:font-bold [&_h2]:mt-5 [&_h2]:text-[16px] [&_h2]:font-bold [&_h3]:mt-4 [&_h3]:text-[15px] [&_h3]:font-semibold [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-3 [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-[10px] [&_pre]:border [&_pre]:border-cp-line [&_pre]:bg-cp-bg-soft [&_pre]:p-3 [&_table]:my-3 [&_table]:w-full [&_td]:border [&_td]:border-cp-line [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-cp-line [&_th]:px-2 [&_th]:py-1 [&_ul]:list-disc [&_ul]:pl-5">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
+    <div className="prose-statement text-[14.5px] leading-relaxed text-cp-text [&_.katex]:text-[1.06em] [&_a]:text-cp-accent [&_code]:rounded [&_code]:bg-cp-bg-soft [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[13px] [&_h1]:mt-5 [&_h1]:text-[18px] [&_h1]:font-bold [&_h2]:mt-5 [&_h2]:text-[16px] [&_h2]:font-bold [&_h3]:mt-4 [&_h3]:text-[15px] [&_h3]:font-semibold [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-3 [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-[10px] [&_pre]:border [&_pre]:border-cp-line [&_pre]:bg-cp-bg-soft [&_pre]:p-3 [&_table]:my-3 [&_table]:w-full [&_td]:border [&_td]:border-cp-line [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-cp-line [&_th]:px-2 [&_th]:py-1 [&_ul]:list-disc [&_ul]:pl-5">
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+        {markdown}
+      </ReactMarkdown>
     </div>
   );
 }

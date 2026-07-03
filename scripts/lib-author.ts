@@ -60,7 +60,7 @@ TAGS: ${a.tags.join(", ")}
 REQUIREMENTS
 - Write a completely ORIGINAL statement (fresh story/wording — never name or copy an existing problem). Keep the story short; two sentences of flavor at most.
 - The problem is solved via stdin/stdout.
-- Statement is GitHub markdown with EXACTLY these sections: a lead paragraph, "## Input", "## Output", "## Constraints". State constraints precisely (bounds on n and values).
+- Statement is GitHub markdown with EXACTLY these sections: a lead paragraph, "## Input", "## Output", "## Constraints". State constraints precisely (bounds on n and values). LaTeX math is supported ($…$ inline, $$…$$ display) and preferred for formulas like $1 \\le n \\le 2 \\cdot 10^4$.
 - Size constraints so (a) a straightforward correct PYTHON solution runs well under 2 seconds and (b) the largest legal input stays under 200KB — e.g. n ≤ 2*10^4 numbers. Naive-complexity solutions should still exceed the time limit at max constraints when the archetype has an intended faster algorithm.
 - referencePython: a correct, efficient CPython 3.12 solution. Read input ROBUSTLY with data = sys.stdin.read().split() and consume tokens by position — never assume specific line breaks. It MUST solve the problem you stated, including edge cases.
 - tests: 8 to 12 tests, INPUTS only (no outputs). Each test is EITHER {"input": "...", "sample": bool} with a literal input of at most 25 short lines, OR {"generatorPython": "...", "sample": false} where generatorPython is a small deterministic CPython script (fixed seed if it uses random) that PRINTS the test input to stdout.
