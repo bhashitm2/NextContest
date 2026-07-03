@@ -33,7 +33,8 @@ export function ProblemTable({ state }: { state: DuelState }) {
 
   return (
     <div className="overflow-hidden rounded-[14px] border border-cp-line bg-cp-surface">
-      <div className="grid grid-cols-[1fr_88px_88px] gap-2 border-b border-cp-line px-4 py-2 font-mono text-[10px] uppercase tracking-wide text-cp-faint">
+      <div className="grid grid-cols-[52px_1fr_88px_88px] gap-2 border-b border-cp-line px-4 py-2 font-mono text-[10px] uppercase tracking-wide text-cp-faint">
+        <span>Code</span>
         <span>Problem</span>
         <span className="truncate text-center" title={aLabel}>
           {aLabel}
@@ -46,10 +47,18 @@ export function ProblemTable({ state }: { state: DuelState }) {
         {state.problems.map((p, i) => (
           <li
             key={p.key}
-            className={`grid grid-cols-[1fr_88px_88px] items-center gap-2 px-4 py-2.5 ${
+            className={`grid grid-cols-[52px_1fr_88px_88px] items-center gap-2 px-4 py-2.5 ${
               i > 0 ? "border-t border-cp-line" : ""
             }`}
           >
+            <a
+              href={p.url}
+              target="_blank"
+              rel="noreferrer"
+              className="font-mono text-[13px] font-semibold text-cp-dim hover:text-cp-accent"
+            >
+              {p.key.replace("-", "")}
+            </a>
             <span className="min-w-0">
               <a
                 href={p.url}
