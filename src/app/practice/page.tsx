@@ -38,7 +38,19 @@ export default async function PracticePage() {
         We&apos;re stocking the problem bank and bringing the judge online — practice problems will
         start appearing here very soon.
       </div>
-      <ProblemList initialData={list} />
+      {/* Under construction: the catalog is admin-only until the judge goes
+          live. Drop this guard (render ProblemList unconditionally) at launch. */}
+      {list.isAdmin ? (
+        <ProblemList initialData={list} />
+      ) : (
+        <div className="rounded-[14px] border border-dashed border-cp-line px-6 py-16 text-center">
+          <p className="text-[17px] font-semibold text-cp-text">Opening soon</p>
+          <p className="mx-auto mt-1.5 max-w-[400px] text-[13.5px] text-cp-dim">
+            Solve original problems in C++, Python or Java and get instant verdicts — right here,
+            no external judge account needed.
+          </p>
+        </div>
+      )}
     </main>
   );
 }
