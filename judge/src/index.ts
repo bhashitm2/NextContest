@@ -12,8 +12,10 @@ if (!SECRET) {
   process.exit(1);
 }
 
-// 2 concurrent judgings (one core each on the 2-OCPU VM), small wait queue.
-const queue = new Semaphore(2, 10);
+// Concurrent judgings — match the VM's OCPU count (each sandbox gets 1 CPU;
+// oversubscribing a small VM inflates wall times into false TLEs).
+const CONCURRENCY = Math.max(1, Number(process.env.JUDGE_CONCURRENCY) || 2);
+const queue = new Semaphore(CONCURRENCY, 10);
 
 /** Parse + bounds-check the request body; returns null when invalid. */
 function validate(body: unknown): JudgeRequest | null {

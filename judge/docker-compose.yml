@@ -4,6 +4,8 @@ services:
     restart: unless-stopped
     environment:
       JUDGE_SECRET: ${JUDGE_SECRET:?set in .env}
+      # Set to the VM's OCPU count (1 on a 1-OCPU shape).
+      JUDGE_CONCURRENCY: ${JUDGE_CONCURRENCY:-2}
       # Sandbox workdirs are bind-mounted by the HOST daemon, so the path the
       # judge writes to must be the same path on the host. Mount it 1:1.
       WORK_DIR: /srv/nc-judge/work
