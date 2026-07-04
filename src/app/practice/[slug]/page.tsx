@@ -35,9 +35,6 @@ export default async function ProblemPage({ params }: Props) {
   } catch {
     notFound();
   }
-  // Under construction: problem pages are admin-only until the judge goes
-  // live. Remove this guard at launch.
-  if (!data.isAdmin) notFound();
 
   return (
     // Full-bleed workbench: the pane fills the viewport below the 65px header
