@@ -4,6 +4,27 @@ import { ContestStatus, Platform } from "@/generated/prisma/client";
 import { loadContestComparison } from "@/server/compare/load-contest";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/trpc";
 
+/**
+ * Derive the status filter from TIME, not the stored `status` enum. `status` is
+ * only recomputed for contests the sync currently fetches, so one that falls out
+ * of a source's API window (e.g. an old CodeChef Starters that CodeChef no longer
+ * returns) freezes at its last value — and would otherwise leak into the Upcoming
+ * feed forever. "Upcoming" here means "not yet finished" (upcoming + currently
+ * live), the complement of the `finished` feed's `endTime < now`.
+ */
+function statusWhere(status: ContestStatus | undefined, now: Date) {
+  switch (status) {
+    case ContestStatus.UPCOMING:
+      return { endTime: { gte: now } };
+    case ContestStatus.ONGOING:
+      return { startTime: { lte: now }, endTime: { gte: now } };
+    case ContestStatus.FINISHED:
+      return { endTime: { lt: now } };
+    default:
+      return {};
+  }
+}
+
 export const contestRouter = createTRPCRouter({
   /** Paginated, filterable contest list (cursor-based for infinite scroll). */
   getAll: publicProcedure
@@ -22,7 +43,7 @@ export const contestRouter = createTRPCRouter({
       const items = await ctx.db.contest.findMany({
         where: {
           platform: input?.platforms?.length ? { in: input.platforms } : undefined,
-          status: input?.status,
+          ...statusWhere(input?.status, new Date()),
         },
         orderBy: { startTime: "asc" },
         take: limit + 1,

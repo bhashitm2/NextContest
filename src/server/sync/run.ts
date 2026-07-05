@@ -87,11 +87,44 @@ export async function pruneOldContests(): Promise<number> {
   return count;
 }
 
+/**
+ * Re-derive `status` from time across ALL stored contests. `syncSource` only sets
+ * status for the contests a source currently returns, so one that drops out of a
+ * source's API window (e.g. an old CodeChef Starters) would freeze at its last
+ * value and keep showing as UPCOMING. These cheap bulk updates keep the column
+ * honest so consumers that trust `status` (e.g. the landing page) stay correct.
+ */
+async function normalizeContestStatuses(): Promise<void> {
+  const now = new Date();
+  await prisma.contest.updateMany({
+    where: { endTime: { lt: now }, status: { not: ContestStatus.FINISHED } },
+    data: { status: ContestStatus.FINISHED },
+  });
+  await prisma.contest.updateMany({
+    where: {
+      startTime: { lte: now },
+      endTime: { gte: now },
+      status: { not: ContestStatus.ONGOING },
+    },
+    data: { status: ContestStatus.ONGOING },
+  });
+  await prisma.contest.updateMany({
+    where: { startTime: { gt: now }, status: { not: ContestStatus.UPCOMING } },
+    data: { status: ContestStatus.UPCOMING },
+  });
+}
+
 /** Run all API-based syncs concurrently and independently. */
 export async function runAllSyncs(): Promise<SyncResult[]> {
   const results = await Promise.all(
     SOURCES.map(({ source, fetchFn }) => syncSource(source, fetchFn)),
   );
+  // Self-heal statuses for contests no longer in any source's fetch window.
+  try {
+    await normalizeContestStatuses();
+  } catch (err) {
+    console.error("[sync] status normalization failed", err);
+  }
   // Fan newly-synced contests out to platform followers (never block the sync).
   try {
     await syncAllAutoBookmarks();
