@@ -4,8 +4,18 @@ import { fetchWindowAcs } from "./cf-judge";
 import type { DuelProblem } from "./select-problems";
 
 /** Live checks are shared by all viewers via lastCheckedAt — at most one CF
- * round-trip per duel per this interval, no matter how many tabs poll. */
+ * round-trip per duel per this interval, no matter how many tabs poll.
+ * Tightens in the final minutes so the endgame feels live (the client poll
+ * drops to match — see duel-view.tsx). */
 const CHECK_THROTTLE_MS = 15_000;
+const ENDGAME_THROTTLE_MS = 6_000;
+export const ENDGAME_WINDOW_MS = 3 * 60_000;
+
+function throttleFor(duel: Duel, now: Date): number {
+  return duel.endsAt && duel.endsAt.getTime() - now.getTime() < ENDGAME_WINDOW_MS
+    ? ENDGAME_THROTTLE_MS
+    : CHECK_THROTTLE_MS;
+}
 
 /** Submissions to scan per player: recent page while live; deep enough at
  * finalize to cover everything submitted during a ≤2h duel. */
@@ -104,7 +114,8 @@ export async function checkDuel(db: PrismaClient, duel: Duel): Promise<Duel> {
   if (!duel.challengerHandle || !duel.opponentHandle) return duel;
 
   const now = new Date();
-  if (duel.lastCheckedAt && now.getTime() - duel.lastCheckedAt.getTime() < CHECK_THROTTLE_MS) {
+  const throttleMs = throttleFor(duel, now);
+  if (duel.lastCheckedAt && now.getTime() - duel.lastCheckedAt.getTime() < throttleMs) {
     return duel;
   }
 
@@ -115,7 +126,7 @@ export async function checkDuel(db: PrismaClient, duel: Duel): Promise<Duel> {
       status: "ACTIVE",
       OR: [
         { lastCheckedAt: null },
-        { lastCheckedAt: { lt: new Date(now.getTime() - CHECK_THROTTLE_MS) } },
+        { lastCheckedAt: { lt: new Date(now.getTime() - throttleMs) } },
       ],
     },
     data: { lastCheckedAt: now },

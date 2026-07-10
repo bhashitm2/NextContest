@@ -1,6 +1,6 @@
 "use client";
 
-import { Swords, X } from "lucide-react";
+import { Check, Copy, Link2, Swords, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -40,15 +40,24 @@ function NewDuelDialog({ onClose }: { onClose: () => void }) {
   const utils = api.useUtils();
   const opponents = api.duel.eligibleOpponents.useQuery();
 
+  const [mode, setMode] = useState<"FRIEND" | "OPEN">("FRIEND");
   const [username, setUsername] = useState<string | null>(null);
   const [format, setFormat] = useState<DuelFormatKey>("TIMED");
   const [preset, setPreset] = useState<DuelPreset>("STANDARD");
   const [band, setBand] = useState<{ min: number; max: number } | null>(null); // null = auto
+  const [createdLink, setCreatedLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const create = api.duel.create.useMutation({
     onSuccess: () => {
       utils.duel.invalidate();
       onClose();
+    },
+  });
+  const createOpen = api.duel.createOpen.useMutation({
+    onSuccess: (res) => {
+      utils.duel.invalidate();
+      setCreatedLink(res.joinUrl);
     },
   });
 
@@ -63,14 +72,25 @@ function NewDuelDialog({ onClose }: { onClose: () => void }) {
 
   const friends = opponents.data?.friends ?? [];
   const me = opponents.data?.me ?? null;
-  const chosen = friends.find((f) => f.username === username) ?? null;
+  const chosen = mode === "FRIEND" ? (friends.find((f) => f.username === username) ?? null) : null;
   const auto = suggestedBand(me?.rating ?? null, chosen?.rating ?? null);
   const min = band?.min ?? auto.min;
   const max = band?.max ?? auto.max;
 
   const submit = () => {
+    if (mode === "OPEN") {
+      createOpen.mutate({ format, preset, ratingMin: min, ratingMax: max });
+      return;
+    }
     if (!username) return;
     create.mutate({ username, format, preset, ratingMin: min, ratingMax: max });
+  };
+
+  const copyLink = async () => {
+    if (!createdLink) return;
+    await navigator.clipboard.writeText(createdLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
   };
 
   return createPortal(
@@ -99,11 +119,65 @@ function NewDuelDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {/* Opponent */}
-        <div className="mb-1.5 font-mono text-[11px] uppercase tracking-wide text-cp-faint">
-          Opponent
+        {createdLink ? (
+          <>
+            <p className="text-[13px] text-cp-dim">
+              Your challenge link is live for 24 hours — first player to accept starts the duel.
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                readOnly
+                value={createdLink}
+                onFocus={(e) => e.currentTarget.select()}
+                aria-label="Challenge link"
+                className="min-w-0 flex-1 rounded-[10px] border border-cp-line bg-cp-surface px-2.5 py-2 font-mono text-[12px] text-cp-text focus:outline-none"
+              />
+              <Button variant="outline" onClick={copyLink}>
+                {copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <Button onClick={onClose}>Done</Button>
+            </div>
+          </>
+        ) : (
+          <>
+        {/* Mode */}
+        <div className="mb-3 flex gap-1.5 rounded-[11px] border border-cp-line p-1">
+          {(
+            [
+              ["FRIEND", "Friend", Swords],
+              ["OPEN", "Open link", Link2],
+            ] as const
+          ).map(([key, label, Icon]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setMode(key)}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[13px] font-semibold transition-colors ${
+                mode === key ? "bg-cp-surface text-cp-text" : "text-cp-dim hover:text-cp-text"
+              }`}
+            >
+              <Icon className="size-3.5" />
+              {label}
+            </button>
+          ))}
         </div>
-        {opponents.isLoading ? (
+
+        {/* Opponent */}
+        {mode === "OPEN" ? (
+          <p className="rounded-[10px] border border-dashed border-cp-line px-3.5 py-3 text-[13px] text-cp-dim">
+            {!opponents.isLoading && !me
+              ? "You need a verified Codeforces handle to duel — connect one in Settings → Profile Links."
+              : "Anyone with the link can accept — they just need a NextContest account and a verified Codeforces handle. Single use, expires in 24h."}
+          </p>
+        ) : (
+          <div className="mb-1.5 font-mono text-[11px] uppercase tracking-wide text-cp-faint">
+            Opponent
+          </div>
+        )}
+        {mode === "OPEN" ? null : opponents.isLoading ? (
           <p className="py-3 text-[13px] text-cp-dim">Loading friends…</p>
         ) : !me ? (
           <p className="rounded-[10px] border border-dashed border-cp-line px-3.5 py-3 text-[13px] text-cp-dim">
@@ -227,19 +301,30 @@ function NewDuelDialog({ onClose }: { onClose: () => void }) {
           <p className="mt-1 text-[11px] text-cp-faint">Suggested from your ratings.</p>
         ) : null}
 
-        {create.error ? (
-          <p className="mt-3 text-[13px] text-red-400">{create.error.message}</p>
+        {create.error || createOpen.error ? (
+          <p className="mt-3 text-[13px] text-red-400">
+            {create.error?.message ?? createOpen.error?.message}
+          </p>
         ) : null}
 
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button disabled={!username || create.isPending} onClick={submit}>
-            <Swords data-icon="inline-start" />
-            {create.isPending ? "Sending…" : "Send challenge"}
-          </Button>
+          {mode === "OPEN" ? (
+            <Button disabled={!me || createOpen.isPending} onClick={submit}>
+              <Link2 data-icon="inline-start" />
+              {createOpen.isPending ? "Creating…" : "Create link"}
+            </Button>
+          ) : (
+            <Button disabled={!username || create.isPending} onClick={submit}>
+              <Swords data-icon="inline-start" />
+              {create.isPending ? "Sending…" : "Send challenge"}
+            </Button>
+          )}
         </div>
+          </>
+        )}
       </div>
     </div>,
     document.body,

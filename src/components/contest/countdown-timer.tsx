@@ -13,9 +13,12 @@ import { cn } from "@/lib/utils";
 export function CountdownTimer({
   target,
   size = "md",
+  urgentUnderMs = 60 * 60 * 1000,
 }: {
   target: Date;
   size?: "sm" | "md" | "lg";
+  /** Remaining time below which the timer goes red + blinks (default 1h). */
+  urgentUnderMs?: number;
 }) {
   const [now, setNow] = useState<number | null>(null);
 
@@ -53,7 +56,7 @@ export function CountdownTimer({
     );
   }
 
-  const urgent = remaining < 60 * 60 * 1000;
+  const urgent = remaining < urgentUnderMs;
 
   if (urgent) {
     return (

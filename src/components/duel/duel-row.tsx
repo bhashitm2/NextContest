@@ -14,9 +14,10 @@ export function duelMeta(duel: DuelListItem): string {
   return `${format} · ${duel.problemCount} problems · ${duel.ratingMin}–${duel.ratingMax}`;
 }
 
-/** The other player, from my point of view. */
+/** The other player, from my point of view. Every non-OPEN duel has an
+ * opponent; the challenger fallback only exists to keep the type non-null. */
 export function counterpartOf(duel: DuelListItem, myId: string) {
-  return duel.challengerId === myId ? duel.opponent : duel.challenger;
+  return (duel.challengerId === myId ? duel.opponent : duel.challenger) ?? duel.challenger;
 }
 
 export function DuelRow({

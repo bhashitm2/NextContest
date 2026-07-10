@@ -50,3 +50,8 @@ export function suggestedBand(myRating: number | null, theirRating: number | nul
 
 /** How long an unanswered invite stays actionable. */
 export const INVITE_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** Canonical join URL for an open-duel invite token. */
+export function joinUrlFor(base: string, token: string): string {
+  return `${base}/duels/join/${token}`;
+}

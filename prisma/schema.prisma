@@ -238,6 +238,7 @@ model Friendship {
 // mid-duel can't break judging. Cancel deletes the PENDING row (no CANCELLED).
 enum DuelStatus {
   PENDING // invite sent, opponent hasn't responded
+  OPEN // shareable link, no opponent yet (v1.9)
   ACTIVE // accepted; clock running
   FINISHED
   DECLINED
@@ -254,7 +255,7 @@ model Duel {
   id           String     @id @default(cuid())
   platform     Platform   @default(CODEFORCES)
   challengerId String
-  opponentId   String
+  opponentId   String? // null while an OPEN link is unclaimed
   status       DuelStatus @default(PENDING)
   format       DuelFormat
   problemCount Int // from preset: 3 | 5 | 7
@@ -262,6 +263,7 @@ model Duel {
   winTarget    Int? // null=TIMED, 1=FIRST_SOLVE, =problemCount for RACE
   ratingMin    Int
   ratingMax    Int
+  inviteToken  String?    @unique // single-use open-invite token (null for friend invites)
 
   challengerHandle String? // frozen at accept
   opponentHandle   String?
@@ -276,8 +278,8 @@ model Duel {
   createdAt     DateTime  @default(now())
   respondedAt   DateTime?
 
-  challenger User @relation("DuelsSent", fields: [challengerId], references: [id], onDelete: Cascade)
-  opponent   User @relation("DuelsReceived", fields: [opponentId], references: [id], onDelete: Cascade)
+  challenger User  @relation("DuelsSent", fields: [challengerId], references: [id], onDelete: Cascade)
+  opponent   User? @relation("DuelsReceived", fields: [opponentId], references: [id], onDelete: Cascade)
 
   @@index([challengerId, status])
   @@index([opponentId, status])

@@ -1,13 +1,57 @@
 "use client";
 
-import { Check, Crown, Minus, X } from "lucide-react";
+import { Check, Copy, Crown, Link2, Minus, X } from "lucide-react";
+import { useState } from "react";
 
 import { CountdownTimer } from "@/components/contest/countdown-timer";
 import type { RouterOutputs } from "@/components/friends/friend-row";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 
-import { DuelRow } from "./duel-row";
+import { DuelRow, duelMeta } from "./duel-row";
+
+/** An unclaimed open-challenge link: meta + copy-link + cancel (no counterpart
+ * to render, so this doesn't reuse DuelRow). */
+function OpenLinkRow({
+  duel,
+  busy,
+  onCancel,
+}: {
+  duel: RouterOutputs["duel"]["list"]["open"][number];
+  busy: boolean;
+  onCancel: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(duel.joinUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  };
+
+  return (
+    <div className="flex items-center gap-3 rounded-[12px] border border-cp-line bg-cp-surface px-3.5 py-2.5">
+      <span className="grid size-9 shrink-0 place-items-center rounded-full border border-dashed border-cp-line text-cp-dim">
+        <Link2 className="size-4" />
+      </span>
+      <div className="min-w-0">
+        <div className="truncate text-[14px] text-cp-text">
+          <span className="font-semibold">Open challenge</span>{" "}
+          <span className="text-cp-dim">— waiting for a taker</span>
+        </div>
+        <div className="truncate font-mono text-[12px] text-cp-dim">{duelMeta(duel)}</div>
+      </div>
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <Button size="sm" variant="outline" onClick={copy}>
+          {copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
+          {copied ? "Copied" : "Copy link"}
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -36,9 +80,13 @@ export function DuelsManager({
   const cancel = api.duel.cancel.useMutation({ onSuccess: invalidate });
   const busy = respond.isPending || cancel.isPending;
 
-  const { incoming, outgoing, active, finished } = list.data;
+  const { incoming, outgoing, open, active, finished } = list.data;
   const empty =
-    incoming.length === 0 && outgoing.length === 0 && active.length === 0 && finished.length === 0;
+    incoming.length === 0 &&
+    outgoing.length === 0 &&
+    open.length === 0 &&
+    active.length === 0 &&
+    finished.length === 0;
 
   if (empty) {
     return (
@@ -104,6 +152,19 @@ export function DuelsManager({
                   </Button>
                 </>
               }
+            />
+          ))}
+        </Section>
+      ) : null}
+
+      {open.length > 0 ? (
+        <Section title="Open challenges">
+          {open.map((d) => (
+            <OpenLinkRow
+              key={d.id}
+              duel={d}
+              busy={busy}
+              onCancel={() => cancel.mutate({ duelId: d.id })}
             />
           ))}
         </Section>

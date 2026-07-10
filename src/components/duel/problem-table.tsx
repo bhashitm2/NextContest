@@ -1,10 +1,8 @@
 "use client";
 
-import { Check, ExternalLink } from "lucide-react";
+import { Check, ExternalLink, Zap } from "lucide-react";
 
-import type { RouterOutputs } from "@/components/friends/friend-row";
-
-type DuelState = RouterOutputs["duel"]["state"];
+import type { DuelDisplay } from "./score-header";
 
 /** "+37:12" — minutes:seconds from duel start to the solve. */
 function solveTime(iso: string | null, startedAt: string | Date | null): string | null {
@@ -15,21 +13,44 @@ function solveTime(iso: string | null, startedAt: string | Date | null): string 
   return `+${m}:${String(s).padStart(2, "0")}`;
 }
 
-function SolveCell({ at, startedAt, color }: { at: string | null; startedAt: DuelState["startedAt"]; color: string }) {
+function SolveCell({
+  at,
+  startedAt,
+  color,
+  firstBlood,
+}: {
+  at: string | null;
+  startedAt: DuelDisplay["startedAt"];
+  color: string;
+  firstBlood: boolean;
+}) {
   const t = solveTime(at, startedAt);
   if (!t) return <span className="text-cp-faint">—</span>;
   return (
     <span className="inline-flex items-center gap-1 font-mono text-[12px] font-bold" style={{ color }}>
+      {firstBlood ? <Zap className="size-3.5 fill-current" aria-label="First blood" /> : null}
       <Check className="size-3.5" />
       {t}
     </span>
   );
 }
 
+/** Which side solved this problem first (null if unsolved or a dead heat). */
+function firstBloodOf(p: { solvedByA: string | null; solvedByB: string | null }): "A" | "B" | null {
+  const a = p.solvedByA ? Date.parse(p.solvedByA) : null;
+  const b = p.solvedByB ? Date.parse(p.solvedByB) : null;
+  if (a == null && b == null) return null;
+  if (a != null && (b == null || a < b)) return "A";
+  if (b != null && (a == null || b < a)) return "B";
+  return null;
+}
+
 /** The duel's problems with each player's solve status. */
-export function ProblemTable({ state }: { state: DuelState }) {
+export function ProblemTable({ state }: { state: DuelDisplay }) {
   const aLabel = state.challenger.name ?? `@${state.challenger.username}`;
-  const bLabel = state.opponent.name ?? `@${state.opponent.username}`;
+  const bLabel = state.opponent
+    ? (state.opponent.name ?? `@${state.opponent.username}`)
+    : "Opponent";
 
   return (
     <div className="overflow-hidden rounded-[14px] border border-cp-line bg-cp-surface">
@@ -44,41 +65,54 @@ export function ProblemTable({ state }: { state: DuelState }) {
         </span>
       </div>
       <ul>
-        {state.problems.map((p, i) => (
-          <li
-            key={p.key}
-            className={`grid grid-cols-[52px_1fr_88px_88px] items-center gap-2 px-4 py-2.5 ${
-              i > 0 ? "border-t border-cp-line" : ""
-            }`}
-          >
-            <a
-              href={p.url}
-              target="_blank"
-              rel="noreferrer"
-              className="font-mono text-[13px] font-semibold text-cp-dim hover:text-cp-accent"
+        {state.problems.map((p, i) => {
+          const first = firstBloodOf(p);
+          return (
+            <li
+              key={p.key}
+              className={`grid grid-cols-[52px_1fr_88px_88px] items-center gap-2 px-4 py-2.5 ${
+                i > 0 ? "border-t border-cp-line" : ""
+              }`}
             >
-              {p.key.replace("-", "")}
-            </a>
-            <span className="min-w-0">
               <a
                 href={p.url}
                 target="_blank"
                 rel="noreferrer"
-                className="group inline-flex max-w-full items-center gap-1.5 text-[14px] text-cp-text hover:text-cp-accent"
+                className="font-mono text-[13px] font-semibold text-cp-dim hover:text-cp-accent"
               >
-                <span className="truncate">{p.name}</span>
-                <ExternalLink className="size-3 shrink-0 text-cp-faint group-hover:text-cp-accent" />
+                {p.key.replace("-", "")}
               </a>
-              <span className="ml-2 font-mono text-[11px] text-cp-faint">{p.rating}</span>
-            </span>
-            <span className="text-center">
-              <SolveCell at={p.solvedByA} startedAt={state.startedAt} color="var(--cp-accent)" />
-            </span>
-            <span className="text-center">
-              <SolveCell at={p.solvedByB} startedAt={state.startedAt} color="#f59e0b" />
-            </span>
-          </li>
-        ))}
+              <span className="min-w-0">
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group inline-flex max-w-full items-center gap-1.5 text-[14px] text-cp-text hover:text-cp-accent"
+                >
+                  <span className="truncate">{p.name}</span>
+                  <ExternalLink className="size-3 shrink-0 text-cp-faint group-hover:text-cp-accent" />
+                </a>
+                <span className="ml-2 font-mono text-[11px] text-cp-faint">{p.rating}</span>
+              </span>
+              <span className="text-center">
+                <SolveCell
+                  at={p.solvedByA}
+                  startedAt={state.startedAt}
+                  color="var(--cp-accent)"
+                  firstBlood={first === "A"}
+                />
+              </span>
+              <span className="text-center">
+                <SolveCell
+                  at={p.solvedByB}
+                  startedAt={state.startedAt}
+                  color="#f59e0b"
+                  firstBlood={first === "B"}
+                />
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
