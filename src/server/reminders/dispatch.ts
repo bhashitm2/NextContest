@@ -5,6 +5,23 @@ import { sendContestReminder, type ReminderKind } from "@/server/email/mailer";
 
 const HOUR = 60 * 60 * 1000;
 
+/**
+ * How far ahead the "starting soon" reminder looks.
+ *
+ * Deliberately WIDER than the 1 hour it's named after. The reminder cron runs
+ * on GitHub Actions, which heavily throttles scheduled workflows: a declared
+ * 15-minute schedule was measured running ~6x/day, average gap 5h, worst 8h.
+ * A strict 60-minute window is simply skipped when no run lands inside it, and
+ * the bookmark then falls out of the query forever once the contest starts —
+ * which silently lost 59% of these reminders.
+ *
+ * Widening only reduces the odds; the real fix is running this endpoint on a
+ * reliable 5-minute schedule (see README / docs). With that in place a 2h
+ * window still fires close to the intended time, and the email states the true
+ * time remaining either way, so it is never misleading.
+ */
+const SOON_WINDOW_MS = 2 * HOUR;
+
 type DispatchResult = { sent24h: number; sent1h: number; failed: number };
 
 /**
@@ -14,20 +31,20 @@ type DispatchResult = { sent24h: number; sent1h: number; failed: number };
  */
 export async function runReminderDispatch(): Promise<DispatchResult> {
   const now = new Date();
-  const in1h = new Date(now.getTime() + HOUR);
+  const soon = new Date(now.getTime() + SOON_WINDOW_MS);
   const in24h = new Date(now.getTime() + 24 * HOUR);
 
   let sent24h = 0;
   let sent1h = 0;
   let failed = 0;
 
-  // 24h reminder: contest is between 1h and 24h away (so it doesn't collide
-  // with the 1h reminder for imminent contests).
+  // 24h reminder: contest is between the "soon" window and 24h away, so it
+  // can't collide with the imminent-contest reminder below.
   const due24h = await prisma.bookmark.findMany({
     where: {
       notify24h: true,
       notified24hAt: null,
-      contest: { startTime: { gt: in1h, lte: in24h } },
+      contest: { startTime: { gt: soon, lte: in24h } },
     },
     include: { contest: true, user: true },
   });
@@ -43,12 +60,12 @@ export async function runReminderDispatch(): Promise<DispatchResult> {
     }
   }
 
-  // 1h reminder: contest is within the next hour (and hasn't started).
+  // Imminent reminder: contest starts within SOON_WINDOW_MS and hasn't started.
   const due1h = await prisma.bookmark.findMany({
     where: {
       notify1h: true,
       notified1hAt: null,
-      contest: { startTime: { gt: now, lte: in1h } },
+      contest: { startTime: { gt: now, lte: soon } },
     },
     include: { contest: true, user: true },
   });

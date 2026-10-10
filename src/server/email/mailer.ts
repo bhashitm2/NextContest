@@ -17,6 +17,8 @@ export type ReminderEmailOpts = {
   /** IANA timezone of the recipient; null → format in UTC. */
   timezone: string | null;
   kind: ReminderKind;
+  /** Reference "now" for the time-remaining phrasing. Injectable for tests. */
+  now?: Date;
 };
 
 const ACCENT = "#4f46e5";
@@ -44,9 +46,24 @@ function safeHref(url: string): string {
   return "#";
 }
 
+/** Human phrasing for the time left before a contest: "in 45 minutes",
+ * "in 2h 30m", "in about 24 hours".
+ *
+ * Derived from the ACTUAL remaining time rather than the reminder's label. The
+ * dispatcher's windows are deliberately wider than their names (the scheduler
+ * it runs on is unreliable — see server/reminders/dispatch.ts), so a hardcoded
+ * "in 1 hour" would sometimes be a lie. */
+function timeUntil(startTime: Date, now: Date): string {
+  const minutes = Math.round((startTime.getTime() - now.getTime()) / 60_000);
+  if (minutes <= 0) return "now";
+  if (minutes < 60) return `in ${minutes} minute${minutes === 1 ? "" : "s"}`;
+  if (minutes >= 20 * 60) return "in about 24 hours";
+  return `in ${formatDuration(minutes * 60)}`;
+}
+
 /** Build the reminder email's subject + HTML (pure — no sending, so testable). */
 export function buildReminderEmail(opts: ReminderEmailOpts): { subject: string; html: string } {
-  const when = opts.kind === "24h" ? "in 24 hours" : "in 1 hour";
+  const when = timeUntil(opts.startTime, opts.now ?? new Date());
   const platformLabel = PLATFORM_META[opts.platform].label;
   const startsAt = formatStartInZone(opts.startTime, opts.timezone ?? "UTC");
   const duration = formatDuration(opts.durationSeconds);
