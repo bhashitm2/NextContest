@@ -9,7 +9,7 @@ import { loadComparison } from "@/server/compare/load";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Compare — NextContest",
+  title: "Compare",
 };
 
 export default async function ComparePage({

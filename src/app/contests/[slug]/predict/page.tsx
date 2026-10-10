@@ -1,19 +1,24 @@
 import { LineChart } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { LocalDate } from "@/components/local-date";
 import { PredictionCard } from "@/components/predict/prediction-card";
+import { contestPath } from "@/lib/contest-slug";
 import { prisma } from "@/lib/db";
 import { PLATFORM_META } from "@/lib/platforms";
+import { getContestByPathParam } from "@/server/contest/by-path";
 import { createCaller } from "@/server/routers/_app";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Predict your rating — NextContest",
+  title: "Predict your rating",
+  // Auth-gated (notFound() below for signed-out visitors), so it can't be
+  // indexed anyway — say so explicitly rather than relying on the 404.
+  robots: { index: false, follow: false },
 };
 
 function Panel({ title, body, cta }: { title: string; body: string; cta?: React.ReactNode }) {
@@ -29,17 +34,20 @@ function Panel({ title, body, cta }: { title: string; body: string; cta?: React.
 export default async function ContestPredictPage({
   params,
 }: {
-  params: Promise<{ contestId: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { contestId } = await params;
+  const { slug } = await params;
   const session = await auth();
 
   // Auth-gated: a logged-out visitor shouldn't be able to land here at all.
   if (!session?.user?.id) notFound();
 
-  const caller = createCaller({ db: prisma, userId: session.user.id, headers: new Headers() });
-  const contest = await caller.contest.getById({ id: contestId });
+  // Accepts a slug or a legacy cuid; everything downstream needs the cuid.
+  const contest = await getContestByPathParam(slug);
   if (!contest) notFound();
+  if (contest.slug && contest.slug !== slug) permanentRedirect(contestPath(contest, "predict"));
+
+  const caller = createCaller({ db: prisma, userId: session.user.id, headers: new Headers() });
 
   const platformLabel = PLATFORM_META[contest.platform].label;
 
@@ -69,7 +77,7 @@ export default async function ContestPredictPage({
     </main>
   );
 
-  const result = await caller.rating.forContest({ contestId });
+  const result = await caller.rating.forContest({ contestId: contest.id });
 
   if (result.status === "not-found") notFound();
 

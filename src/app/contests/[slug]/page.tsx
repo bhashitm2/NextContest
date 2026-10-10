@@ -1,36 +1,49 @@
-import { ArrowUpRight, LineChart, ListChecks, Swords, Trophy } from "lucide-react";
+import { ArrowUpRight, CalendarClock, LineChart, ListChecks, Swords, Timer, Trophy } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
-import { auth } from "@/auth";
 import { ContestLeaderboard } from "@/components/contest/leaderboard";
+import { JsonLd } from "@/components/json-ld";
 import { LocalDate } from "@/components/local-date";
 import { PlatformLogo } from "@/components/platform-logo";
-import { prisma } from "@/lib/db";
+import { contestPath } from "@/lib/contest-slug";
+import { formatDuration, formatStartInZone } from "@/lib/format";
 import { PLATFORM_META, platformColor } from "@/lib/platforms";
-import { createCaller } from "@/server/routers/_app";
+import { absoluteUrl } from "@/lib/site";
+import { getContestByPathParam } from "@/server/contest/by-path";
+import { contestQuestions } from "@/server/contest/questions";
 
 export const dynamic = "force-dynamic";
+
+// NOTE: do NOT add a loading.tsx to this route, and do not move it under the
+// (browse) route group (which has one). Once a Suspense fallback flushes, the
+// response body has started streaming and permanentRedirect() below degrades
+// from a real 308 into a client-side meta refresh, which search engines treat
+// very differently.
 
 /** Platforms with a rating predictor (see server/predictions). */
 const PREDICTABLE = ["CODEFORCES", "LEETCODE"];
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ contestId: string }>;
-}): Promise<Metadata> {
-  const { contestId } = await params;
-  const contest = await prisma.contest.findUnique({
-    where: { id: contestId },
-    select: { title: true },
-  });
+type Props = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const contest = await getContestByPathParam(slug);
+  if (!contest) return { title: "Contest" };
+
+  const platformLabel = PLATFORM_META[contest.platform].label;
+  const when = formatStartInZone(contest.startTime, "UTC");
+  const description = PREDICTABLE.includes(contest.platform)
+    ? `${contest.title} on ${platformLabel} — starts ${when}, runs ${formatDuration(contest.durationSeconds)}. Questions, the full ranking and every rating change.`
+    : `${contest.title} on ${platformLabel} — starts ${when}, runs ${formatDuration(contest.durationSeconds)}. Start time in your timezone, duration and calendar reminders.`;
+  const canonical = contestPath(contest);
+
   return {
-    title: contest ? `${contest.title} — NextContest` : "Contest — NextContest",
-    description: contest
-      ? `Questions and the full ranking with rating changes for ${contest.title}.`
-      : undefined,
+    title: contest.title,
+    description,
+    alternates: { canonical },
+    openGraph: { title: contest.title, description, url: canonical, type: "website" },
   };
 }
 
@@ -62,21 +75,15 @@ function Notice({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default async function ContestDetailPage({
-  params,
-}: {
-  params: Promise<{ contestId: string }>;
-}) {
-  const { contestId } = await params;
-  const session = await auth();
-  const caller = createCaller({
-    db: prisma,
-    userId: session?.user?.id ?? null,
-    headers: new Headers(),
-  });
+export default async function ContestDetailPage({ params }: Props) {
+  const { slug } = await params;
 
-  const contest = await caller.contest.getById({ id: contestId });
+  const contest = await getContestByPathParam(slug);
   if (!contest) notFound();
+
+  // Reached by cuid (an old bookmark or shared link) — send search engines and
+  // visitors to the one canonical URL rather than serving it under two.
+  if (contest.slug && contest.slug !== slug) permanentRedirect(contestPath(contest));
 
   const color = platformColor(contest.platform);
   const platformLabel = PLATFORM_META[contest.platform].label;
@@ -86,12 +93,57 @@ export default async function ContestDetailPage({
   const isPredictable = PREDICTABLE.includes(contest.platform);
 
   // Questions (LeetCode + Codeforces, once the contest has started). Server-
-  // rendered; failures degrade to an omitted section.
+  // rendered; failures degrade to an omitted section. Calls the fetchers
+  // directly rather than the rate-limited tRPC procedure — see
+  // server/contest/questions.ts for why.
   const questions =
-    isPredictable && started ? await caller.rating.contestQuestions({ contestId }) : null;
+    isPredictable && started
+      ? await contestQuestions(contest.platform, contest.externalId)
+      : null;
+
+  const canonical = absoluteUrl(contestPath(contest));
 
   return (
     <main className="mx-auto w-full max-w-[820px] px-4 py-10 sm:px-[22px]">
+      {/* A coding contest is a scheduled online Event; the breadcrumb is what
+          actually renders in the search result. */}
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Event",
+              name: contest.title,
+              url: canonical,
+              startDate: contest.startTime.toISOString(),
+              endDate: contest.endTime.toISOString(),
+              eventStatus: "https://schema.org/EventScheduled",
+              eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+              location: { "@type": "VirtualLocation", url: contest.url },
+              organizer: { "@type": "Organization", name: platformLabel, url: contest.url },
+              description: `${contest.title} — a ${platformLabel} competitive programming contest running ${formatDuration(contest.durationSeconds)}.`,
+              isAccessibleForFree: true,
+            },
+            {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                // Two levels only: the platform filter is client-side state,
+                // not its own URL, so a per-platform crumb would point at a
+                // page that ignores it.
+                { "@type": "ListItem", position: 1, name: "Contests", item: absoluteUrl("/contests") },
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: ended ? "Past contests" : "Upcoming contests",
+                  item: absoluteUrl(ended ? "/contests/past" : "/contests"),
+                },
+                { "@type": "ListItem", position: 3, name: contest.title, item: canonical },
+              ],
+            },
+          ],
+        }}
+      />
+
       {/* header */}
       <header className="mb-7">
         <div className="mb-2 flex flex-wrap items-center gap-2.5">
@@ -140,15 +192,17 @@ export default async function ContestDetailPage({
 
         {/* secondary actions */}
         <div className="mt-4 flex flex-wrap gap-2">
+          {ended ? (
           <Link
-            href={`/contests/${contest.id}/compare`}
+            href={contestPath(contest, "compare")}
             className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[10px] border border-cp-line-strong bg-cp-surface px-3.5 text-[13px] font-semibold text-cp-text transition-colors hover:border-cp-accent"
           >
             <Swords className="size-3.5" /> Compare with friend
           </Link>
+          ) : null}
           {isPredictable ? (
             <Link
-              href={`/contests/${contest.id}/predict`}
+              href={contestPath(contest, "predict")}
               className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[10px] border border-cp-line-strong bg-cp-surface px-3.5 text-[13px] font-semibold text-cp-text transition-colors hover:border-cp-accent"
             >
               <LineChart className="size-3.5" /> Predict my rating
@@ -157,10 +211,48 @@ export default async function ContestDetailPage({
         </div>
       </header>
 
+      {/* Contest facts — the answer to "when is X and how long is it", present
+          for every platform and readable without JavaScript. */}
+      <section className="mb-9">
+        <SectionHeading
+          icon={<CalendarClock className="size-[18px] text-cp-accent" />}
+          title="When it runs"
+        />
+        <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-[12px] border border-cp-line bg-cp-line sm:grid-cols-3">
+          {[
+            { k: "Starts", v: <LocalDate date={contest.startTime} /> },
+            { k: "Ends", v: <LocalDate date={contest.endTime} /> },
+            {
+              k: "Duration",
+              v: (
+                <span className="inline-flex items-center gap-1.5">
+                  <Timer className="size-3.5 text-cp-faint" />
+                  {formatDuration(contest.durationSeconds)}
+                </span>
+              ),
+            },
+          ].map((row) => (
+            <div key={row.k} className="bg-cp-surface px-4 py-3">
+              <dt className="text-[11px] uppercase tracking-[0.12em] text-cp-faint">{row.k}</dt>
+              <dd className="mt-1 text-[14px] text-cp-text">{row.v}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-3 text-[13.5px] leading-relaxed text-cp-dim">
+          {contest.title} is {contest.difficulty ? `a ${contest.difficulty} ` : "a "}
+          contest on {platformLabel}, running for {formatDuration(contest.durationSeconds)}.
+          Times above are shown in your local timezone. Bookmark it on the{" "}
+          <Link href="/contests" className="text-cp-accent hover:underline">
+            contests feed
+          </Link>{" "}
+          to get an email reminder 24 hours and 1 hour before it starts.
+        </p>
+      </section>
+
       {!isPredictable ? (
         <Notice>
-          Questions &amp; full rankings with rating changes are available for LeetCode and Codeforces
-          contests for now. Use the action above to compare with a friend.
+          Full rankings and rating changes are available for LeetCode and Codeforces contests today.
+          Once this one ends you can still compare your result with a friend.
         </Notice>
       ) : (
         <div className="space-y-9">

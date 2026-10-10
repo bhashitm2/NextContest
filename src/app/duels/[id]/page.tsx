@@ -33,14 +33,14 @@ export async function generateMetadata({
     },
   });
   if (!duel || duel.status !== "FINISHED" || !duel.startedAt) {
-    return { title: "Duel — NextContest" };
+    return { title: "Duel" };
   }
   const problems = parseProblems(duel.problems);
   const a = scoreOf(problems, duel.startedAt, "A").solved;
   const b = scoreOf(problems, duel.startedAt, "B").solved;
   const format = DUEL_FORMATS[duel.format as DuelFormatKey]?.label ?? duel.format;
   return {
-    title: `${duel.challengerHandle} ${a}–${b} ${duel.opponentHandle} · ${format} duel — NextContest`,
+    title: `${duel.challengerHandle} ${a}–${b} ${duel.opponentHandle} · ${format} duel`,
   };
 }
 

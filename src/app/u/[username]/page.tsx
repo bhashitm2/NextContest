@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 
+import { JsonLd } from "@/components/json-ld";
 import { ForecastCard } from "@/components/predict/forecast-card";
 import { ProfileBody } from "@/components/profile/profile-body";
 import { avatarSrc } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 import { totalSolved } from "@/lib/profile";
+import { absoluteUrl } from "@/lib/site";
 import { normalizeUsername } from "@/lib/username";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +25,8 @@ const HANDLE_SELECT = {
   lastSynced: true,
 } as const;
 
-async function getProfile(usernameRaw: string) {
+// Memoized per request: generateMetadata and the page body both need it.
+const getProfile = cache(async (usernameRaw: string) => {
   return prisma.user.findUnique({
     where: { username: normalizeUsername(usernameRaw) },
     select: {
@@ -36,7 +40,7 @@ async function getProfile(usernameRaw: string) {
       },
     },
   });
-}
+});
 
 export async function generateMetadata({
   params,
@@ -45,16 +49,26 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { username } = await params;
   const profile = await getProfile(username);
-  if (!profile) return { title: "Profile not found — NextContest" };
+  if (!profile) return { title: "Profile not found" };
 
   const display = profile.name ?? profile.username ?? username;
   const solved = totalSolved(profile.handles);
-  const title = `${display} — NextContest`;
+  const title = display;
   const description =
     profile.handles.length > 0
       ? `${solved.toLocaleString()} problems solved across ${profile.handles.length} platform${profile.handles.length > 1 ? "s" : ""}.`
       : `${display}'s competitive programming profile.`;
-  return { title, description, openGraph: { title, description } };
+  const canonical = `/u/${profile.username ?? username}`;
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: { title, description, url: canonical, type: "profile" },
+    // `handles` is already filtered to verified ones, so an empty list means an
+    // empty page. Keep those out of the index (but let the crawler follow out)
+    // rather than padding the site with hundreds of contentless profiles.
+    robots: profile.handles.length > 0 ? undefined : { index: false, follow: true },
+  };
 }
 
 export default async function PublicProfilePage({
@@ -71,6 +85,28 @@ export default async function PublicProfilePage({
 
   return (
     <main className="mx-auto w-full max-w-[840px] px-4 py-10 sm:px-[22px]">
+      {/* Only emitted for profiles with a verified handle — the same predicate
+          that decides indexability in generateMetadata. */}
+      {profile.handles.length > 0 ? (
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "ProfilePage",
+            dateModified: profile.handles
+              .map((h) => h.lastSynced)
+              .filter(Boolean)
+              .sort()
+              .at(-1)
+              ?.toISOString(),
+            mainEntity: {
+              "@type": "Person",
+              name: display,
+              alternateName: profile.handles.map((h) => h.handle),
+              url: absoluteUrl(`/u/${profile.username}`),
+            },
+          }}
+        />
+      ) : null}
       <header className="mb-6 flex items-center gap-4">
         {avatarSrc(profile.image) ? (
           // eslint-disable-next-line @next/next/no-img-element

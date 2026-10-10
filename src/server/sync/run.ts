@@ -1,4 +1,5 @@
 import { ContestStatus, type Platform } from "@/generated/prisma/client";
+import { slugCandidates } from "@/lib/contest-slug";
 import { prisma } from "@/lib/db";
 
 import { fetchAtCoder } from "./atcoder";
@@ -6,7 +7,7 @@ import { syncAllAutoBookmarks } from "./auto-bookmarks";
 import { fetchCodeChef } from "./codechef";
 import { fetchCodeforces } from "./codeforces";
 import { fetchLeetCode } from "./leetcode";
-import { type NormalizedContest, PRUNE_WINDOW_DAYS, pruneCutoffMs } from "./types";
+import { type NormalizedContest } from "./types";
 
 export type SyncResult = {
   source: Platform;
@@ -20,6 +21,83 @@ function statusFor(startTime: Date, endTime: Date): ContestStatus {
   if (endTime.getTime() < now) return ContestStatus.FINISHED;
   if (startTime.getTime() <= now) return ContestStatus.ONGOING;
   return ContestStatus.UPCOMING;
+}
+
+/** Postgres unique-violation surfaced by Prisma — here, a slug already taken. */
+function isUniqueViolation(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { code?: string }).code === "P2002";
+}
+
+/**
+ * Write a contest, managing its `slug` (the public URL segment).
+ *
+ * Slugs are derived from the title, and titles DO change: Codeforces publishes
+ * rounds as "Codeforces Round (Div. 2)" and renames them once the round is
+ * numbered, and an AtCoder contest is first inserted from the atcoder.jp scrape
+ * then overwritten with the kenkoooo title. So the rule is:
+ *
+ *   • not started yet → re-derive, so a renamed round gets its proper URL;
+ *   • started/finished → FREEZE, because that URL may already be indexed and
+ *     linked, and changing it would throw away the ranking.
+ *
+ * Collisions (two contests sharing a title) walk the candidate ladder; the
+ * unique index on Contest.slug is the final arbiter.
+ */
+async function upsertContest(
+  c: NormalizedContest,
+  data: NormalizedContest & { status: ContestStatus },
+): Promise<void> {
+  const where = { platform_externalId: { platform: c.platform, externalId: c.externalId } };
+  const existing = await prisma.contest.findUnique({
+    where,
+    select: { id: true, slug: true, startTime: true },
+  });
+
+  const frozen = existing?.slug != null && existing.startTime.getTime() <= Date.now();
+  if (existing && frozen) {
+    await prisma.contest.update({ where: { id: existing.id }, data });
+    return;
+  }
+
+  for (const slug of slugCandidates(c)) {
+    try {
+      await prisma.contest.upsert({ where, update: { ...data, slug }, create: { ...data, slug } });
+      return;
+    } catch (err) {
+      if (!isUniqueViolation(err)) throw err;
+      // Slug taken by a different contest — try the next candidate.
+    }
+  }
+  // Every candidate collided: keep the contest, leave the slug for the
+  // self-healing pass below (the page falls back to the cuid meanwhile).
+  await prisma.contest.upsert({ where, update: data, create: data });
+}
+
+/**
+ * Give a slug to any contest that lacks one — rows written by an older deploy,
+ * or ones whose candidates all collided. Bounded so a sync run stays quick.
+ */
+export async function fillMissingSlugs(): Promise<number> {
+  const rows = await prisma.contest.findMany({
+    where: { slug: null },
+    take: 200,
+    orderBy: { startTime: "asc" },
+    select: { id: true, platform: true, externalId: true, title: true },
+  });
+
+  let filled = 0;
+  for (const row of rows) {
+    for (const slug of slugCandidates(row)) {
+      try {
+        await prisma.contest.update({ where: { id: row.id }, data: { slug } });
+        filled++;
+        break;
+      } catch (err) {
+        if (!isUniqueViolation(err)) throw err;
+      }
+    }
+  }
+  return filled;
 }
 
 /**
@@ -41,11 +119,7 @@ export async function syncSource(
     const contests = await fetchFn();
     for (const c of contests) {
       const data = { ...c, status: statusFor(c.startTime, c.endTime) };
-      await prisma.contest.upsert({
-        where: { platform_externalId: { platform: c.platform, externalId: c.externalId } },
-        update: data,
-        create: data,
-      });
+      await upsertContest(c, data);
     }
     await prisma.syncState.update({
       where: { source },
@@ -67,24 +141,23 @@ const SOURCES: { source: Platform; fetchFn: () => Promise<NormalizedContest[]> }
 ];
 
 /**
- * Retention: keep only ~6 months of contests. Deletes contests that started
- * before the prune cutoff (cascades to their Bookmarks + CalendarTombstones)
- * and drops now-orphaned ContestResult cache rows (no FK to Contest). Returns
- * the number of contests removed. Best-effort — callers swallow failures.
+ * Contests are now kept PERMANENTLY. They used to be deleted after ~6 months,
+ * but each finished contest has a public, indexed page at /contests/<slug>;
+ * deleting the row 404s a URL that has accumulated rankings and inbound links.
+ * Growth is ~1.6 contests/day (~600 rows/year, a megabyte or two over years),
+ * and every read path is time-filtered and indexed.
+ *
+ * Still swept: ContestResult cache rows with no matching contest (that table
+ * has no FK to Contest, so a hand-deleted contest would leave rows behind).
  */
 export async function pruneOldContests(): Promise<number> {
-  const { count } = await prisma.contest.deleteMany({
-    where: { startTime: { lt: new Date(pruneCutoffMs()) } },
-  });
-  // ContestResult has no FK to Contest, so clean up cache rows whose contest is
-  // gone (the per-contest compare can't be opened for a deleted contest anyway).
   await prisma.$executeRaw`
     DELETE FROM "ContestResult" cr
     WHERE NOT EXISTS (
       SELECT 1 FROM "Contest" c
       WHERE c.platform = cr.platform AND c."externalId" = cr."externalId"
     )`;
-  return count;
+  return 0;
 }
 
 /**
@@ -131,12 +204,18 @@ export async function runAllSyncs(): Promise<SyncResult[]> {
   } catch {
     // auto-bookmark fan-out is best-effort; contest data already saved above.
   }
-  // Enforce the ~6-month retention window (never block the sync on cleanup).
+  // Give a URL to anything that still lacks one (never block the sync).
   try {
-    const pruned = await pruneOldContests();
-    if (pruned > 0) console.log(`[sync] pruned ${pruned} contests older than ${PRUNE_WINDOW_DAYS}d`);
+    const filled = await fillMissingSlugs();
+    if (filled > 0) console.log(`[sync] filled ${filled} missing contest slugs`);
   } catch (err) {
-    console.error("[sync] prune failed", err);
+    console.error("[sync] slug fill failed", err);
+  }
+  // Drop orphaned result-cache rows (never block the sync on cleanup).
+  try {
+    await pruneOldContests();
+  } catch (err) {
+    console.error("[sync] cache cleanup failed", err);
   }
   return results;
 }

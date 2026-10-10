@@ -10,7 +10,7 @@ import { createCaller } from "@/server/routers/_app";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Requests — NextContest",
+  title: "Requests",
 };
 
 export default async function RequestsPage() {

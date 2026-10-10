@@ -11,7 +11,7 @@ import { createCaller } from "@/server/routers/_app";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Friends — NextContest",
+  title: "Friends",
   description: "Add friends by CodeTag and compare your competitive-programming profiles head-to-head.",
 };
 

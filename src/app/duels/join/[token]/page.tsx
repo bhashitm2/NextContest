@@ -13,7 +13,7 @@ import { createCaller } from "@/server/routers/_app";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Duel challenge — NextContest",
+  title: "Duel challenge",
 };
 
 function Card({ children }: { children: React.ReactNode }) {

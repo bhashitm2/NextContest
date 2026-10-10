@@ -26,7 +26,7 @@ export function PastContestsFeed({ contests }: { contests: Contest[] }) {
 
   const resultText = selected.length
     ? `${shown.length} of ${contests.length} contests · filtered by ${selected.length} platform${selected.length > 1 ? "s" : ""}`
-    : `Showing the last ${contests.length} finished contests`;
+    : `Showing ${contests.length} finished contests`;
 
   return (
     <div className="flex flex-col gap-4">

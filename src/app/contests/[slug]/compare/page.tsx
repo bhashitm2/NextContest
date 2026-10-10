@@ -1,20 +1,24 @@
 import { Swords } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { ContestVsView } from "@/components/contest/contest-vs-view";
 import { LocalDate } from "@/components/local-date";
 import { avatarSrc } from "@/lib/avatar";
+import { contestPath } from "@/lib/contest-slug";
 import { prisma } from "@/lib/db";
 import { PLATFORM_META } from "@/lib/platforms";
+import { getContestByPathParam } from "@/server/contest/by-path";
 import { createCaller } from "@/server/routers/_app";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Compare on a contest — NextContest",
+  title: "Compare on a contest",
+  // Auth-gated (notFound() for signed-out visitors) — mark it explicitly.
+  robots: { index: false, follow: false },
 };
 
 function Panel({ title, body, cta }: { title: string; body: string; cta?: React.ReactNode }) {
@@ -29,16 +33,16 @@ function Panel({ title, body, cta }: { title: string; body: string; cta?: React.
 
 function PickerRow({
   friend,
-  contestId,
+  contestSlug,
 }: {
   friend: { username: string | null; name: string | null; image: string | null };
-  contestId: string;
+  contestSlug: string;
 }) {
   const label = friend.name ?? friend.username ?? "Friend";
   const src = avatarSrc(friend.image);
   return (
     <Link
-      href={`/contests/${contestId}/compare?friend=${encodeURIComponent(friend.username ?? "")}`}
+      href={`/contests/${contestSlug}/compare?friend=${encodeURIComponent(friend.username ?? "")}`}
       className="flex items-center gap-3 rounded-[12px] border border-cp-line bg-cp-surface px-3.5 py-2.5 transition-colors hover:border-cp-accent"
     >
       {src ? (
@@ -71,19 +75,23 @@ export default async function ContestComparePage({
   params,
   searchParams,
 }: {
-  params: Promise<{ contestId: string }>;
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ friend?: string }>;
 }) {
-  const { contestId } = await params;
+  const { slug } = await params;
   const { friend } = await searchParams;
   const session = await auth();
 
   // Auth-gated: a logged-out visitor shouldn't be able to land here at all.
   if (!session?.user?.id) notFound();
 
-  const caller = createCaller({ db: prisma, userId: session.user.id, headers: new Headers() });
-  const contest = await caller.contest.getById({ id: contestId });
+  // Accepts a slug or a legacy cuid; everything downstream needs the cuid.
+  const contest = await getContestByPathParam(slug);
   if (!contest) notFound();
+  if (contest.slug && contest.slug !== slug) permanentRedirect(contestPath(contest, "compare"));
+
+  const caller = createCaller({ db: prisma, userId: session.user.id, headers: new Headers() });
+  const contestId = contest.id;
 
   const platformLabel = PLATFORM_META[contest.platform].label;
 
@@ -132,7 +140,7 @@ export default async function ContestComparePage({
             </p>
             <div className="space-y-2">
               {friends.map((f) => (
-                <PickerRow key={f.username} friend={f} contestId={contestId} />
+                <PickerRow key={f.username} friend={f} contestSlug={contest.slug ?? contest.id} />
               ))}
             </div>
           </>

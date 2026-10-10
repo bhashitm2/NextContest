@@ -3,10 +3,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { JsonLd } from "@/components/json-ld";
 import { LiveBoard } from "@/components/landing/live-board";
 import { ContestStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { ACTIVE_PLATFORMS, PLATFORM_META, platformColor } from "@/lib/platforms";
+import { absoluteUrl, SITE_URL } from "@/lib/site";
 
 const FEATURES = [
   {
@@ -42,6 +44,30 @@ export default async function Home() {
 
   return (
     <main className="mx-auto w-full max-w-[1240px] px-4 sm:px-[22px]">
+      {/* Names the site as an entity so "NextContest" resolves to this domain
+          rather than the similarly-named projects that already rank for it. */}
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "WebSite",
+              name: "NextContest",
+              alternateName: "Next Contest",
+              url: SITE_URL,
+              description:
+                "Every upcoming Codeforces, LeetCode, AtCoder and CodeChef contest in one live feed, with reminders and rating predictions.",
+            },
+            {
+              "@type": "Organization",
+              name: "NextContest",
+              url: SITE_URL,
+              logo: absoluteUrl("/icon"),
+            },
+          ],
+        }}
+      />
+
       {/* hero */}
       <section className="grid grid-cols-1 items-center gap-12 py-[70px] lg:grid-cols-[1.05fr_1fr]">
         <div className="animate-rise">
@@ -53,7 +79,7 @@ export default async function Home() {
             One portal for every coding contest
           </div>
           <h1 className="font-display text-[clamp(2.5rem,5.6vw,4.1rem)] font-bold leading-[1.02] tracking-[-0.03em]">
-            Every contest.
+            Every coding contest.
             <br />
             Every platform.
             <br />
@@ -107,7 +133,14 @@ export default async function Home() {
       </section>
 
       {/* features */}
-      <section className="grid grid-cols-1 gap-[18px] pb-[90px] sm:grid-cols-3">
+      <section className="pb-[90px]" aria-labelledby="features-heading">
+        <h2
+          id="features-heading"
+          className="mb-7 font-display text-[clamp(1.5rem,3vw,2rem)] font-bold tracking-[-0.02em]"
+        >
+          Built for competitive programmers
+        </h2>
+        <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-3">
         {FEATURES.map((f) => (
           <div
             key={f.title}
@@ -123,6 +156,7 @@ export default async function Home() {
             <p className="text-sm leading-relaxed text-cp-dim">{f.body}</p>
           </div>
         ))}
+        </div>
       </section>
     </main>
   );

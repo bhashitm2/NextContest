@@ -4,7 +4,8 @@ import { PageHeader } from "@/components/page-header";
 import { PredictLookup } from "@/components/predict/predict-lookup";
 
 export const metadata: Metadata = {
-  title: "Ratings — NextContest",
+  alternates: { canonical: "/ratings" },
+  title: "Ratings",
   description:
     "Search any Codeforces or LeetCode handle to see their recent contests and rating changes — including a live prediction for a round that isn't rated yet.",
 };

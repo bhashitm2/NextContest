@@ -11,7 +11,7 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Your Profile — NextContest",
+  title: "Your Profile",
   description: "Your verified competitive-programming profiles and solved-problem stats across platforms.",
 };
 

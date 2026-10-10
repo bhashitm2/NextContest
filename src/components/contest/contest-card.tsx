@@ -6,6 +6,7 @@ import { CountdownTimer } from "@/components/contest/countdown-timer";
 import { LocalDate } from "@/components/local-date";
 import { PlatformLogo } from "@/components/platform-logo";
 import type { Contest } from "@/generated/prisma/client";
+import { contestPath } from "@/lib/contest-slug";
 import { formatDuration } from "@/lib/format";
 import { PLATFORM_META, platformColor } from "@/lib/platforms";
 
@@ -61,37 +62,27 @@ export function ContestCard({
           ) : null}
         </div>
 
-        {contest.platform === "LEETCODE" || contest.platform === "CODEFORCES" ? (
-          // LeetCode / Codeforces → in-app results page (questions + ranking);
-          // the platform link demotes to a small external icon.
-          <div className="flex items-start gap-1.5">
-            <Link
-              href={`/contests/${contest.id}`}
-              className="font-display text-base font-semibold leading-snug text-cp-text transition-colors hover:text-cp-accent"
-            >
-              {contest.title}
-            </Link>
-            <a
-              href={contest.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`Open on ${meta.label}`}
-              className="mt-0.5 shrink-0"
-            >
-              <ArrowUpRight className="size-3.5 text-cp-faint transition-colors hover:text-cp-accent" />
-            </a>
-          </div>
-        ) : (
+        {/* Every platform gets an in-app page (questions + ranking where we have
+            them, contest facts otherwise); the platform link demotes to a small
+            external icon. Heading semantics give the card list real structure. */}
+        <h3 className="flex items-start gap-1.5">
+          <Link
+            href={contestPath(contest)}
+            className="font-display text-base font-semibold leading-snug text-cp-text transition-colors hover:text-cp-accent"
+          >
+            {contest.title}
+          </Link>
           <a
             href={contest.url}
             target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-start gap-1.5 font-display text-base font-semibold leading-snug text-cp-text transition-colors hover:text-cp-accent"
+            rel="noopener noreferrer nofollow"
+            aria-label={`Open ${contest.title} on ${meta.label}`}
+            title={`Open on ${meta.label}`}
+            className="mt-0.5 shrink-0"
           >
-            {contest.title}
-            <ArrowUpRight className="mt-0.5 size-3.5 flex-none text-cp-faint" />
+            <ArrowUpRight className="size-3.5 text-cp-faint transition-colors hover:text-cp-accent" />
           </a>
-        )}
+        </h3>
       </div>
 
       <div className="relative flex items-center gap-4 px-[17px] pt-3.5 text-[13px] text-cp-dim">

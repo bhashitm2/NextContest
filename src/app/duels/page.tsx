@@ -11,7 +11,7 @@ import { createCaller } from "@/server/routers/_app";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Duels — NextContest",
+  title: "Duels",
   description:
     "Challenge a friend to a Codeforces duel: same unsolved problems, one clock, may the faster coder win.",
 };

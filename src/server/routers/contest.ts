@@ -86,18 +86,28 @@ export const contestRouter = createTRPCRouter({
         .object({
           platforms: z.array(z.enum(Platform)).optional(),
           limit: z.number().min(1).max(400).default(120),
+          /** Offset paging for the archive: contests are kept permanently, so
+           * the list outgrows any single page and older ones would otherwise
+           * have no link pointing at them. */
+          skip: z.number().min(0).default(0),
         })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
-      return ctx.db.contest.findMany({
-        where: {
-          endTime: { lt: new Date() },
-          platform: input?.platforms?.length ? { in: input.platforms } : undefined,
-        },
-        orderBy: { endTime: "desc" },
-        take: input?.limit ?? 120,
-      });
+      const where = {
+        endTime: { lt: new Date() },
+        platform: input?.platforms?.length ? { in: input.platforms } : undefined,
+      };
+      const [items, total] = await Promise.all([
+        ctx.db.contest.findMany({
+          where,
+          orderBy: { endTime: "desc" },
+          take: input?.limit ?? 120,
+          skip: input?.skip ?? 0,
+        }),
+        ctx.db.contest.count({ where }),
+      ]);
+      return { items, total };
     }),
 
   /** Friends who have a verified handle on this contest's platform — i.e. those

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LocalDate } from "@/components/local-date";
 import { PlatformLogo } from "@/components/platform-logo";
 import type { Contest } from "@/generated/prisma/client";
+import { contestPath } from "@/lib/contest-slug";
 import { PLATFORM_META, platformColor } from "@/lib/platforms";
 
 /** Platforms with a rating predictor (see server/predictions). */
@@ -54,37 +55,26 @@ export function PastContestCard({ contest }: { contest: Contest }) {
           ) : null}
         </div>
 
-        {PREDICTABLE.includes(contest.platform) ? (
-          // LeetCode / Codeforces → in-app results page (questions + ranking);
-          // the platform link demotes to a small external icon.
-          <div className="flex items-start gap-1.5">
-            <Link
-              href={`/contests/${contest.id}`}
-              className="font-display text-base font-semibold leading-snug text-cp-text transition-colors hover:text-cp-accent"
-            >
-              {contest.title}
-            </Link>
-            <a
-              href={contest.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`Open on ${meta.label}`}
-              className="mt-0.5 shrink-0"
-            >
-              <ArrowUpRight className="size-3.5 text-cp-faint transition-colors hover:text-cp-accent" />
-            </a>
-          </div>
-        ) : (
+        {/* Every platform gets an in-app page; the platform link demotes to a
+            small external icon. Heading semantics give the card list structure. */}
+        <h3 className="flex items-start gap-1.5">
+          <Link
+            href={contestPath(contest)}
+            className="font-display text-base font-semibold leading-snug text-cp-text transition-colors hover:text-cp-accent"
+          >
+            {contest.title}
+          </Link>
           <a
             href={contest.url}
             target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-start gap-1.5 font-display text-base font-semibold leading-snug text-cp-text transition-colors hover:text-cp-accent"
+            rel="noopener noreferrer nofollow"
+            aria-label={`Open ${contest.title} on ${meta.label}`}
+            title={`Open on ${meta.label}`}
+            className="mt-0.5 shrink-0"
           >
-            {contest.title}
-            <ArrowUpRight className="mt-0.5 size-3.5 flex-none text-cp-faint" />
+            <ArrowUpRight className="size-3.5 text-cp-faint transition-colors hover:text-cp-accent" />
           </a>
-        )}
+        </h3>
       </div>
 
       <div className="relative flex items-center gap-1.5 px-[17px] pt-3.5 text-[13px] text-cp-dim">
@@ -94,7 +84,7 @@ export function PastContestCard({ contest }: { contest: Contest }) {
 
       <div className="relative mt-auto flex flex-col gap-2 p-[17px] pt-[15px]">
         <Link
-          href={`/contests/${contest.id}/compare`}
+          href={contestPath(contest, "compare")}
           className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-[10px] bg-cp-accent px-3.5 text-[13px] font-semibold text-cp-accent-ink transition-opacity hover:opacity-90"
         >
           <Swords className="size-3.5" />
@@ -102,7 +92,7 @@ export function PastContestCard({ contest }: { contest: Contest }) {
         </Link>
         {PREDICTABLE.includes(contest.platform) ? (
           <Link
-            href={`/contests/${contest.id}/predict`}
+            href={contestPath(contest, "predict")}
             className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-[10px] border border-cp-line-strong bg-cp-surface px-3.5 text-[13px] font-semibold text-cp-text transition-colors hover:border-cp-accent"
           >
             <LineChart className="size-3.5" />

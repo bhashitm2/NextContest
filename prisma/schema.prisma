@@ -116,6 +116,9 @@ model Contest {
   id              String        @id @default(cuid())
   platform        Platform
   externalId      String // the platform's own contest identifier
+  // Human-readable URL segment, frozen once the contest starts (server/sync/run.ts).
+  // Nullable by design — see migration 20260920000000_contest_slug.
+  slug            String?       @unique
   title           String
   url             String
   startTime       DateTime

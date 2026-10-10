@@ -53,7 +53,7 @@ export async function SiteHeader() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-1.5 sm:gap-2.5">
+        <nav aria-label="Account" className="flex items-center gap-1.5 sm:gap-2.5">
           <MainNav
             isAuthed={Boolean(user)}
             pendingRequests={pendingRequests}

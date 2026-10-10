@@ -46,7 +46,7 @@ export function MainNav({
   };
 
   return (
-    <nav className="hidden items-center gap-1 sm:flex">
+    <nav aria-label="Main" className="hidden items-center gap-1 sm:flex">
       {items.map((item) => {
         const active = isActive(item.href);
         const badge = badges[item.href];

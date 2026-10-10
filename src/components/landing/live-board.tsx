@@ -6,6 +6,7 @@ import Link from "next/link";
 import { CountdownTimer } from "@/components/contest/countdown-timer";
 import { LocalDate } from "@/components/local-date";
 import type { Contest } from "@/generated/prisma/client";
+import { contestPath } from "@/lib/contest-slug";
 import { formatDuration } from "@/lib/format";
 import { PLATFORM_META, platformColor } from "@/lib/platforms";
 
@@ -45,9 +46,11 @@ export function LiveBoard({ contests }: { contests: Contest[] }) {
             Up next
           </div>
           <PlatformPill platform={next.platform} />
-          <div className="relative mb-4 mt-2.5 font-display text-lg font-semibold leading-snug">
-            {next.title}
-          </div>
+          <h2 className="relative mb-4 mt-2.5 font-display text-lg font-semibold leading-snug">
+            <Link href={contestPath(next)} className="transition-colors hover:text-cp-accent">
+              {next.title}
+            </Link>
+          </h2>
           <div className="flex items-end justify-between gap-3">
             <div>
               <div className="mb-1 text-[10.5px] uppercase tracking-[0.12em] text-cp-faint">
@@ -70,8 +73,9 @@ export function LiveBoard({ contests }: { contests: Contest[] }) {
       {queue.length ? (
         <div className="p-1.5">
           {queue.map((c) => (
-            <div
+            <Link
               key={c.id}
+              href={contestPath(c)}
               className="flex items-center gap-3 rounded-[11px] px-3 py-2.5 transition-colors hover:bg-cp-surface"
             >
               <span
@@ -86,7 +90,7 @@ export function LiveBoard({ contests }: { contests: Contest[] }) {
                 <div className="text-[11.5px] text-cp-faint">{PLATFORM_META[c.platform].label}</div>
               </div>
               <CountdownTimer target={c.startTime} size="sm" />
-            </div>
+            </Link>
           ))}
         </div>
       ) : null}

@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { SettingsShell } from "@/components/settings/settings-shell";
 
 export const metadata: Metadata = {
-  title: "Settings — NextContest",
+  title: "Settings",
   description: "Connect and verify your competitive-programming handles and choose your public profile username.",
 };
 
